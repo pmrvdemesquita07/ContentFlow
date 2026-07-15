@@ -219,16 +219,21 @@ model Media {
 
 /// Snapshots over time, not just the latest value — one row per capture.
 model Metric {
-  id         String         @id @default(uuid())
-  contentId  String
-  platform   SocialPlatform
-  likes      Int            @default(0)
-  comments   Int            @default(0)
-  shares     Int            @default(0)
-  reach      Int            @default(0)
-  saved      Int            @default(0)
-  videoViews Int            @default(0)
-  capturedAt DateTime       @default(now())
+  id          String         @id @default(uuid())
+  contentId   String
+  platform    SocialPlatform
+  likes       Int            @default(0)
+  comments    Int            @default(0)
+  shares      Int            @default(0)
+  reach       Int            @default(0)
+  saved       Int            @default(0)
+  videoViews  Int            @default(0)
+  impressions Int            @default(0)
+  /// Story-only: replies, exits, and forward-taps aren't available for posts/reels.
+  replies     Int            @default(0)
+  exits       Int            @default(0)
+  tapsForward Int            @default(0)
+  capturedAt  DateTime       @default(now())
 
   content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
