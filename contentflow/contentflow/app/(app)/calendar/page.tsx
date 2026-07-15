@@ -1,14 +1,24 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
-import { getScheduledContent } from "@/lib/content";
+import { getCalendarContent, getBestPostingTimes } from "@/lib/content";
 import { ContentDetailDialog } from "@/components/content/content-detail-dialog";
 import { NewContentDialog } from "@/components/content/new-content-dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 function parseMonth(month?: string) {
   if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -23,6 +33,12 @@ function monthParam(year: number, month: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
 
+function formatHour(hour: number) {
+  const period = hour < 12 ? "AM" : "PM";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h}${period}`;
+}
+
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -35,15 +51,19 @@ export default async function CalendarPage({
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
 
-  const scheduled = await getScheduledContent(ctx.brand.id);
+  const [items, bestTimes] = await Promise.all([
+    getCalendarContent(ctx.brand.id),
+    getBestPostingTimes(ctx.brand.id),
+  ]);
 
   const firstOfMonth = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const leadingBlanks = firstOfMonth.getDay();
 
-  const byDay = new Map<number, typeof scheduled>();
-  for (const item of scheduled) {
-    const d = new Date(item.scheduledAt!);
+  const byDay = new Map<number, typeof items>();
+  for (const item of items) {
+    const d = item.scheduledAt ?? item.publishedAt;
+    if (!d) continue;
     if (d.getFullYear() === year && d.getMonth() === month) {
       const day = d.getDate();
       byDay.set(day, [...(byDay.get(day) ?? []), item]);
@@ -82,6 +102,22 @@ export default async function CalendarPage({
         </div>
       </div>
 
+      {bestTimes && (
+        <Card>
+          <CardContent className="flex items-center gap-3 pt-5">
+            <Sparkles className="size-4 shrink-0 text-primary" />
+            <p className="text-sm">
+              Based on your last {bestTimes.sampleSize} published posts, engagement has been
+              highest on <span className="font-semibold">{WEEKDAY_NAMES[bestTimes.bestDay.day]}</span>{" "}
+              (avg {Math.round(bestTimes.bestDay.avg).toLocaleString()} interactions) around{" "}
+              <span className="font-semibold">{formatHour(bestTimes.bestHour.hour)}</span> (avg{" "}
+              {Math.round(bestTimes.bestHour.avg).toLocaleString()} interactions). Worth
+              scheduling your next post around then.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-7 overflow-hidden rounded-lg border">
         {WEEKDAYS.map((d) => (
           <div
@@ -105,7 +141,14 @@ export default async function CalendarPage({
                 <div className="flex flex-col gap-1">
                   {(byDay.get(day) ?? []).map((item) => (
                     <ContentDetailDialog key={item.id} content={item}>
-                      <div className="w-full truncate rounded bg-accent px-1.5 py-1 text-left text-xs text-accent-foreground">
+                      <div
+                        className={cn(
+                          "w-full truncate rounded px-1.5 py-1 text-left text-xs",
+                          item.status === "published"
+                            ? "bg-success/15 text-success"
+                            : "bg-accent text-accent-foreground"
+                        )}
+                      >
                         {item.title}
                       </div>
                     </ContentDetailDialog>
