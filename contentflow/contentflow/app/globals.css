@@ -33,6 +33,15 @@
   --border: oklch(0.9 0.005 285);
   --input: oklch(0.9 0.005 285);
   --ring: oklch(0.5 0.16 275 / 0.5);
+
+  /* Chart tokens - validated categorical palette, see dataviz skill palette.md */
+  --chart-1: #2a78d6;
+  --chart-2: #008300;
+  --chart-3: #e87ba4;
+  --chart-4: #eda100;
+  --chart-5: #1baf7a;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
 }
 
 .dark {
@@ -64,6 +73,14 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.72 0.14 275 / 0.5);
+
+  --chart-1: #3987e5;
+  --chart-2: #008300;
+  --chart-3: #d55181;
+  --chart-4: #c98500;
+  --chart-5: #199e70;
+  --chart-grid: #2c2c2a;
+  --chart-axis: #383835;
 }
 
 @theme inline {
