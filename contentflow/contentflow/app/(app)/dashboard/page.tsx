@@ -61,9 +61,24 @@ export default async function DashboardPage() {
           ) : (
             <ul className="flex flex-col divide-y">
               {highEngagement.map(({ content, interactions }) => (
-                <li key={content.id} className="flex items-center justify-between py-2.5">
-                  <span className="text-sm font-medium">{content.title}</span>
-                  <Badge variant="success">{interactions.toLocaleString()} interactions</Badge>
+                <li key={content.id} className="flex items-center gap-3 py-2.5">
+                  {content.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={content.thumbnailUrl}
+                      alt=""
+                      className="size-10 shrink-0 rounded object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="size-10 shrink-0 rounded bg-muted" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {content.title}
+                  </span>
+                  <Badge variant="success" className="shrink-0">
+                    {interactions.toLocaleString()} interactions
+                  </Badge>
                 </li>
               ))}
             </ul>
