@@ -7,7 +7,17 @@ export async function getAnalyticsData(brandId: string) {
     orderBy: { capturedAt: "desc" },
   });
 
-  const totals = metrics.reduce(
+  // Metric rows are snapshots over time (one per sync), so only the most
+  // recent snapshot per content+platform reflects current totals - summing
+  // every historical row would multiply counts by however many times we've synced.
+  const latestByContentPlatform = new Map<string, (typeof metrics)[number]>();
+  for (const m of metrics) {
+    const key = `${m.contentId}:${m.platform}`;
+    if (!latestByContentPlatform.has(key)) latestByContentPlatform.set(key, m);
+  }
+  const latest = [...latestByContentPlatform.values()];
+
+  const totals = latest.reduce(
     (acc, m) => {
       acc.likes += m.likes;
       acc.comments += m.comments;
@@ -22,7 +32,7 @@ export async function getAnalyticsData(brandId: string) {
     string,
     { campaignId: string; likes: number; comments: number; shares: number; reach: number }
   >();
-  for (const m of metrics) {
+  for (const m of latest) {
     const key = m.content.campaignId ?? "uncategorized";
     const row = byCampaign.get(key) ?? {
       campaignId: key,
@@ -41,6 +51,6 @@ export async function getAnalyticsData(brandId: string) {
   return {
     totals,
     byCampaign: [...byCampaign.values()],
-    hasAnyMetrics: metrics.length > 0,
+    hasAnyMetrics: latest.length > 0,
   };
 }
