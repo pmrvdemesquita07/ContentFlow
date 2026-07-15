@@ -153,44 +153,70 @@ export async function getInstagramStories(accessToken: string) {
   return json.data;
 }
 
-export type InstagramStoryInsights = { reach: number; replies: number };
+export type InstagramStoryInsights = {
+  reach: number;
+  replies: number;
+  exits: number;
+  tapsForward: number;
+};
 
-/** Stories don't support likes/comments/saves in the API - only reach and DM replies. */
+/** Stories don't support likes/comments/saves in the API - only these navigation/reply metrics. */
 export async function getInstagramStoryInsights(
   storyId: string,
   accessToken: string
 ): Promise<InstagramStoryInsights> {
-  const params = new URLSearchParams({ metric: "reach,replies", access_token: accessToken });
+  const params = new URLSearchParams({
+    metric: "reach,replies,exits,taps_forward",
+    access_token: accessToken,
+  });
   const res = await fetch(`${IG_GRAPH_URL}/${storyId}/insights?${params.toString()}`);
-  const empty = { reach: 0, replies: 0 };
+  const empty = { reach: 0, replies: 0, exits: 0, tapsForward: 0 };
   if (!res.ok) return empty;
   const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
   const valueFor = (name: string) =>
     json.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
-  return { reach: valueFor("reach"), replies: valueFor("replies") };
+  return {
+    reach: valueFor("reach"),
+    replies: valueFor("replies"),
+    exits: valueFor("exits"),
+    tapsForward: valueFor("taps_forward"),
+  };
 }
 
-export type InstagramMediaInsights = { reach: number; saved: number; videoViews: number };
+export type InstagramMediaInsights = {
+  reach: number;
+  saved: number;
+  videoViews: number;
+  impressions: number;
+};
 
 /**
  * Best-effort: not every media type/permission combo supports insights, and
  * the valid metric set differs by media_product_type, so request only what
  * that type supports and default anything missing to 0 rather than failing.
+ * (Meta has deprecated "impressions" for some API versions/media types -
+ * when that happens it just comes back as 0 rather than breaking the sync.)
  */
 export async function getInstagramMediaInsights(
   mediaId: string,
   mediaProductType: string | undefined,
   accessToken: string
 ): Promise<InstagramMediaInsights> {
-  const metrics = mediaProductType === "REELS" ? "reach,saved,plays" : "reach,saved";
+  const metrics =
+    mediaProductType === "REELS" ? "reach,saved,plays,impressions" : "reach,saved,impressions";
   const params = new URLSearchParams({ metric: metrics, access_token: accessToken });
   const res = await fetch(`${IG_GRAPH_URL}/${mediaId}/insights?${params.toString()}`);
-  const empty = { reach: 0, saved: 0, videoViews: 0 };
+  const empty = { reach: 0, saved: 0, videoViews: 0, impressions: 0 };
   if (!res.ok) return empty;
   const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
   const valueFor = (name: string) =>
     json.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
-  return { reach: valueFor("reach"), saved: valueFor("saved"), videoViews: valueFor("plays") };
+  return {
+    reach: valueFor("reach"),
+    saved: valueFor("saved"),
+    videoViews: valueFor("plays"),
+    impressions: valueFor("impressions"),
+  };
 }
 
 export type InstagramMessage = {
