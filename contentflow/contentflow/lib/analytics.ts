@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { ContentType } from "@/lib/generated/prisma/enums";
-import { DASHBOARD_RANGES, type DashboardRange } from "@/lib/dashboard";
+import type { ResolvedRange } from "@/lib/date-range";
 
 const EMPTY_TOTALS = {
   likes: 0,
@@ -47,8 +47,8 @@ function growthPercent(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100;
 }
 
-export async function getAnalyticsData(brandId: string, range: DashboardRange = "30d") {
-  const rangeStart = new Date(Date.now() - DASHBOARD_RANGES[range].days * 24 * 60 * 60 * 1000);
+export async function getAnalyticsData(brandId: string, range: ResolvedRange) {
+  const { start, end } = range;
 
   const [metrics, socialAccounts, accountSnapshots] = await Promise.all([
     prisma.metric.findMany({
@@ -62,6 +62,7 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
             type: true,
             thumbnailUrl: true,
             externalUrl: true,
+            publishedAt: true,
           },
         },
       },
@@ -81,27 +82,27 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
   }
   const latest = [...latestByContentPlatform.values()];
 
-  const totals = latest.reduce((acc, m) => addMetric(acc, m), { ...EMPTY_TOTALS });
+  // Everything below scopes to posts *published* within the selected window -
+  // picking a range should actually change what you see, not just the growth
+  // badges next to an unbounded lifetime total.
+  const inRange = latest.filter(
+    (m) => m.content.publishedAt && m.content.publishedAt >= start && m.content.publishedAt <= end
+  );
+
+  const totals = inRange.reduce((acc, m) => addMetric(acc, m), { ...EMPTY_TOTALS });
   const totalInteractions = interactionsOf(totals);
 
-  // "As of" a cutoff: the latest snapshot per content+platform that existed
-  // by that point in time, summed. Comparing "now" against "as of rangeStart"
-  // gives real growth - new content within the period counts fully as growth,
-  // matching how an existing post's rising likes/reach also counts as growth.
-  function totalsAsOf(cutoff: Date): Totals {
-    const latestPerKeyAsOf = new Map<string, (typeof metrics)[number]>();
-    for (const m of metrics) {
-      if (m.capturedAt > cutoff) continue;
-      const key = `${m.contentId}:${m.platform}`;
-      const existing = latestPerKeyAsOf.get(key);
-      if (!existing || m.capturedAt > existing.capturedAt) latestPerKeyAsOf.set(key, m);
-    }
-    return [...latestPerKeyAsOf.values()].reduce((acc, m) => addMetric(acc, m), {
-      ...EMPTY_TOTALS,
-    });
-  }
+  // Period-over-period: the same-length window immediately before this one,
+  // so growth answers "vs the equivalent previous period" rather than an
+  // arbitrary lifetime-cumulative comparison.
+  const periodMs = end.getTime() - start.getTime();
+  const prevEnd = new Date(start.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - periodMs);
+  const previousInRange = latest.filter(
+    (m) => m.content.publishedAt && m.content.publishedAt >= prevStart && m.content.publishedAt <= prevEnd
+  );
+  const previousTotals = previousInRange.reduce((acc, m) => addMetric(acc, m), { ...EMPTY_TOTALS });
 
-  const previousTotals = totalsAsOf(rangeStart);
   const growth = {
     likes: growthPercent(totals.likes, previousTotals.likes),
     comments: growthPercent(totals.comments, previousTotals.comments),
@@ -117,7 +118,7 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
 
   const byCampaign = new Map<string, { campaignId: string } & Totals>();
   const byType = new Map<ContentType, Totals>();
-  for (const m of latest) {
+  for (const m of inRange) {
     const campaignKey = m.content.campaignId ?? "uncategorized";
     const campaignRow = byCampaign.get(campaignKey) ?? { campaignId: campaignKey, ...EMPTY_TOTALS };
     addMetric(campaignRow, m);
@@ -128,12 +129,41 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     byType.set(m.content.type, typeRow);
   }
 
-  const followerTotals = {
+  function followersAsOf(cutoff: Date) {
+    const latestPerAccount = new Map<string, (typeof accountSnapshots)[number]>();
+    for (const snap of accountSnapshots) {
+      if (snap.capturedAt > cutoff) continue;
+      const existing = latestPerAccount.get(snap.socialAccountId);
+      if (!existing || snap.capturedAt > existing.capturedAt) {
+        latestPerAccount.set(snap.socialAccountId, snap);
+      }
+    }
+    return {
+      followers: [...latestPerAccount.values()].reduce((sum, s) => sum + s.followersCount, 0),
+      following: [...latestPerAccount.values()].reduce((sum, s) => sum + s.followingCount, 0),
+    };
+  }
+
+  const liveFollowerTotals = {
     followers: socialAccounts.reduce((sum, a) => sum + (a.followersCount ?? 0), 0),
     following: socialAccounts.reduce((sum, a) => sum + (a.followingCount ?? 0), 0),
   };
 
-  const perPost = latest
+  // Preset ranges always end "now", so the live cached count (refreshed on
+  // every sync) is more current than the last snapshot might be. A custom
+  // range can end in the past, where the as-of-that-date snapshot is the
+  // historically correct value - falling back to live only if no snapshot
+  // exists yet at all.
+  const followersAtEnd = followersAsOf(end);
+  const followerTotals =
+    range.key === "custom"
+      ? {
+          followers: followersAtEnd.followers || liveFollowerTotals.followers,
+          following: followersAtEnd.following || liveFollowerTotals.following,
+        }
+      : liveFollowerTotals;
+
+  const perPost = inRange
     .map((m) => {
       const interactions = interactionsOf(m);
       return {
@@ -160,22 +190,7 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     })
     .sort((a, b) => b.interactions - a.interactions);
 
-  function followersAsOf(cutoff: Date) {
-    const latestPerAccount = new Map<string, (typeof accountSnapshots)[number]>();
-    for (const snap of accountSnapshots) {
-      if (snap.capturedAt > cutoff) continue;
-      const existing = latestPerAccount.get(snap.socialAccountId);
-      if (!existing || snap.capturedAt > existing.capturedAt) {
-        latestPerAccount.set(snap.socialAccountId, snap);
-      }
-    }
-    return {
-      followers: [...latestPerAccount.values()].reduce((sum, s) => sum + s.followersCount, 0),
-      following: [...latestPerAccount.values()].reduce((sum, s) => sum + s.followingCount, 0),
-    };
-  }
-
-  const previousFollowerTotals = followersAsOf(rangeStart);
+  const previousFollowerTotals = followersAsOf(start);
   const followerGrowth = {
     followers: growthPercent(followerTotals.followers, previousFollowerTotals.followers),
     following: growthPercent(followerTotals.following, previousFollowerTotals.following),
@@ -202,7 +217,7 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     byCampaign: [...byCampaign.values()],
     byType: [...byType.entries()].map(([type, row]) => ({ type, ...row })),
     perPost,
-    hasAnyMetrics: latest.length > 0,
+    hasAnyMetrics: inRange.length > 0,
     followerTotals,
     followerGrowth,
     hasAnyAccounts: socialAccounts.length > 0,
