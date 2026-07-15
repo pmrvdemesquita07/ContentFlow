@@ -160,30 +160,65 @@ export type InstagramStoryInsights = {
   tapsForward: number;
 };
 
-/** Stories don't support likes/comments/saves in the API - only these navigation/reply metrics. */
+/**
+ * Stories don't support likes/comments/saves in the API - only reach/replies
+ * and navigation. Meta retired the separate "exits"/"taps_forward" metrics
+ * in favor of a single "navigation" metric broken down by action type - the
+ * exact breakdown label strings aren't documented anywhere we could find,
+ * so anything that doesn't match a recognized label is logged instead of
+ * silently dropped, in case the labels differ from what's assumed here.
+ */
 export async function getInstagramStoryInsights(
   storyId: string,
   accessToken: string
 ): Promise<InstagramStoryInsights> {
-  const params = new URLSearchParams({
-    metric: "reach,replies,exits,taps_forward",
-    access_token: accessToken,
-  });
-  const res = await fetch(`${IG_GRAPH_URL}/${storyId}/insights?${params.toString()}`);
   const empty = { reach: 0, replies: 0, exits: 0, tapsForward: 0 };
-  if (!res.ok) {
-    console.error(`Instagram story insights failed for ${storyId}: ${res.status} ${await res.text()}`);
+
+  const basicParams = new URLSearchParams({ metric: "reach,replies", access_token: accessToken });
+  const basicRes = await fetch(`${IG_GRAPH_URL}/${storyId}/insights?${basicParams.toString()}`);
+  if (!basicRes.ok) {
+    console.error(
+      `Instagram story insights failed for ${storyId}: ${basicRes.status} ${await basicRes.text()}`
+    );
     return empty;
   }
-  const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
-  const valueFor = (name: string) =>
-    json.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
-  return {
-    reach: valueFor("reach"),
-    replies: valueFor("replies"),
-    exits: valueFor("exits"),
-    tapsForward: valueFor("taps_forward"),
+  const basicJson = (await basicRes.json()) as {
+    data?: { name: string; values: { value: number }[] }[];
   };
+  const valueFor = (name: string) =>
+    basicJson.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
+
+  const navParams = new URLSearchParams({
+    metric: "navigation",
+    metric_type: "total_value",
+    breakdown: "story_navigation_action_type",
+    access_token: accessToken,
+  });
+  const navRes = await fetch(`${IG_GRAPH_URL}/${storyId}/insights?${navParams.toString()}`);
+  let exits = 0;
+  let tapsForward = 0;
+  if (navRes.ok) {
+    const navJson = (await navRes.json()) as {
+      data?: {
+        total_value?: {
+          breakdowns?: { results?: { dimension_values: string[]; value: number }[] }[];
+        };
+      }[];
+    };
+    const results = navJson.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
+    for (const r of results) {
+      const label = r.dimension_values[0]?.toUpperCase() ?? "";
+      if (label.includes("EXIT")) exits += r.value;
+      else if (label.includes("FORWARD")) tapsForward += r.value;
+      else console.error(`Unrecognized story navigation action type "${label}" for ${storyId}: ${r.value}`);
+    }
+  } else {
+    console.error(
+      `Instagram story navigation insights failed for ${storyId}: ${navRes.status} ${await navRes.text()}`
+    );
+  }
+
+  return { reach: valueFor("reach"), replies: valueFor("replies"), exits, tapsForward };
 }
 
 export type InstagramMediaInsights = {
@@ -197,16 +232,16 @@ export type InstagramMediaInsights = {
  * Best-effort: not every media type/permission combo supports insights, and
  * the valid metric set differs by media_product_type, so request only what
  * that type supports and default anything missing to 0 rather than failing.
- * (Meta has deprecated "impressions" for some API versions/media types -
- * when that happens it just comes back as 0 rather than breaking the sync.)
+ * Confirmed via live 400 errors (not docs, which lag behind): Meta no longer
+ * supports "impressions" for feed/carousel/reel media at all, and renamed
+ * the Reels video-view metric from "plays" to "views".
  */
 export async function getInstagramMediaInsights(
   mediaId: string,
   mediaProductType: string | undefined,
   accessToken: string
 ): Promise<InstagramMediaInsights> {
-  const metrics =
-    mediaProductType === "REELS" ? "reach,saved,plays,impressions" : "reach,saved,impressions";
+  const metrics = mediaProductType === "REELS" ? "reach,saved,views" : "reach,saved";
   const params = new URLSearchParams({ metric: metrics, access_token: accessToken });
   const res = await fetch(`${IG_GRAPH_URL}/${mediaId}/insights?${params.toString()}`);
   const empty = { reach: 0, saved: 0, videoViews: 0, impressions: 0 };
@@ -220,8 +255,8 @@ export async function getInstagramMediaInsights(
   return {
     reach: valueFor("reach"),
     saved: valueFor("saved"),
-    videoViews: valueFor("plays"),
-    impressions: valueFor("impressions"),
+    videoViews: valueFor("views"),
+    impressions: 0,
   };
 }
 
