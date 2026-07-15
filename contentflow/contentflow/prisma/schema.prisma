@@ -165,8 +165,11 @@ model Content {
   updatedAt   DateTime      @updatedAt
   /// Set when this row was imported from a connected social account
   /// (the platform's post/media id) instead of authored in ContentFlow.
-  externalId  String?
-  externalUrl String?
+  externalId   String?
+  externalUrl  String?
+  /// Refreshed on every sync - the platform's CDN link expires after a
+  /// while, so this only stays valid as long as syncing keeps happening.
+  thumbnailUrl String?
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -223,6 +226,8 @@ model Metric {
   comments   Int            @default(0)
   shares     Int            @default(0)
   reach      Int            @default(0)
+  saved      Int            @default(0)
+  videoViews Int            @default(0)
   capturedAt DateTime       @default(now())
 
   content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
