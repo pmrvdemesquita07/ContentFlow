@@ -1,9 +1,13 @@
+import Link from "next/link";
 import { TrendingUp } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
-import { getDashboardData } from "@/lib/dashboard";
+import { getDashboardData, DASHBOARD_RANGES, type DashboardRange } from "@/lib/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LineChart } from "@/components/charts/line-chart";
+import { ExportPdfButton } from "./export-button";
+import { cn } from "@/lib/utils";
 import type { ContentStatus } from "@/lib/generated/prisma/enums";
 
 const STATUS_LABELS: Record<ContentStatus, string> = {
@@ -14,20 +18,59 @@ const STATUS_LABELS: Record<ContentStatus, string> = {
   archived: "Archived",
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range } = await searchParams;
+  const activeRange: DashboardRange =
+    range && range in DASHBOARD_RANGES ? (range as DashboardRange) : "30d";
+
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
 
-  const { counts, highEngagement, hasAnyMetrics } = await getDashboardData(ctx.brand.id);
+  const {
+    counts,
+    highEngagement,
+    hasAnyMetrics,
+    followerTotals,
+    hasAnyAccounts,
+    followerSeries,
+    engagementSeries,
+  } = await getDashboardData(ctx.brand.id, activeRange);
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          {ctx.workspace.name} - {ctx.brand.name}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            {ctx.workspace.name} - {ctx.brand.name}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 print-hide">
+            {(Object.entries(DASHBOARD_RANGES) as [DashboardRange, { label: string }][]).map(
+              ([key, { label }]) => (
+                <Link
+                  key={key}
+                  href={`/dashboard?range=${key}`}
+                  className={cn(
+                    "rounded-md px-2.5 py-1.5 text-sm font-medium",
+                    activeRange === key
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {label}
+                </Link>
+              )
+            )}
+          </div>
+          <ExportPdfButton />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
@@ -40,6 +83,44 @@ export default async function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {hasAnyAccounts && (
+        <>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
+            <Card>
+              <CardContent className="pt-5">
+                <p className="text-xs text-muted-foreground">Followers</p>
+                <p className="text-2xl font-semibold">
+                  {followerTotals.followers.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-5">
+                <p className="text-xs text-muted-foreground">Following</p>
+                <p className="text-2xl font-semibold">
+                  {followerTotals.following.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardContent className="pt-5">
+                <h2 className="mb-4 text-sm font-semibold">Follower growth</h2>
+                <LineChart points={followerSeries} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-5">
+                <h2 className="mb-4 text-sm font-semibold">Engagement over time</h2>
+                <LineChart points={engagementSeries} />
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       <Card>
         <CardHeader>
@@ -56,7 +137,7 @@ export default async function DashboardPage() {
             </p>
           ) : highEngagement.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nothing over 500 interactions yet.
+              Nothing over 500 interactions in this period.
             </p>
           ) : (
             <ul className="flex flex-col divide-y">
