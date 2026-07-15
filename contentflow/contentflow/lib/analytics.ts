@@ -181,9 +181,18 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     following: growthPercent(followerTotals.following, previousFollowerTotals.following),
   };
 
+  // Averaged per-post, not "total interactions across every post ever synced /
+  // current followers" - that would inflate with every additional post synced
+  // rather than reflecting how engaging a typical post actually is.
+  const perPostFollowerRates = perPost
+    .map((p) => p.engagementRateByFollowers)
+    .filter((v): v is number => v !== null);
+
   const engagementRates = {
     byFollowers:
-      followerTotals.followers > 0 ? (totalInteractions / followerTotals.followers) * 100 : null,
+      perPostFollowerRates.length > 0
+        ? perPostFollowerRates.reduce((sum, v) => sum + v, 0) / perPostFollowerRates.length
+        : null,
     byViews: engagementRateByViews(totalInteractions, totals),
   };
 
