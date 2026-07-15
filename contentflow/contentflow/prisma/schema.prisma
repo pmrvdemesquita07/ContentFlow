@@ -98,6 +98,7 @@ model Workspace {
   brands    Brand[]
   content   Content[]
   media     Media[]
+  messages  Message[]
 
   @@map("workspaces")
 }
@@ -126,6 +127,7 @@ model Brand {
   brandVoice    BrandVoice?
   content       Content[]
   media         Media[]
+  messages      Message[]
   socialAccounts SocialAccount[]
 
   @@map("brands")
@@ -239,17 +241,25 @@ model SocialAccount {
   @@map("social_accounts")
 }
 
+/// contentId is optional (a DM isn't always about one post), but every
+/// message still comes in through a specific brand's connected account, so
+/// workspaceId/brandId are required for tenant scoping.
 model Message {
-  id         String         @id @default(uuid())
-  contentId  String?
-  platform   SocialPlatform
-  sender     String
-  body       String         @db.Text
-  receivedAt DateTime       @default(now())
-  status     MessageStatus  @default(unread)
+  id          String         @id @default(uuid())
+  workspaceId String
+  brandId     String
+  contentId   String?
+  platform    SocialPlatform
+  sender      String
+  body        String         @db.Text
+  receivedAt  DateTime       @default(now())
+  status      MessageStatus  @default(unread)
 
-  content Content? @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  content   Content?  @relation(fields: [contentId], references: [id], onDelete: SetNull)
 
+  @@index([workspaceId, status])
   @@map("messages")
 }
 

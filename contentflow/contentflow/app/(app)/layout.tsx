@@ -19,20 +19,20 @@ import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 
 const ACTIVE_LINKS = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/ideas", label: "Ideas Bank", icon: Lightbulb },
   { href: "/posts", label: "Posts", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/tasks", label: "Tasks", icon: SquareCheck },
   { href: "/media", label: "Media", icon: Image },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/mailbox", label: "Mailbox", icon: Inbox },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const SOON_LINKS = [
-  { label: "Dashboard", icon: LayoutDashboard },
   { label: "Social Hub", icon: Share2 },
-  { label: "Analytics", icon: BarChart3 },
   { label: "Assistants", icon: Sparkles },
-  { label: "Mailbox", icon: Inbox },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
