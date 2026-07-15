@@ -71,6 +71,7 @@ export type InstagramMedia = {
   media_type: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
   media_product_type?: "FEED" | "REELS" | "STORY";
   media_url?: string;
+  thumbnail_url?: string;
   permalink?: string;
   timestamp: string;
   like_count?: number;
@@ -80,7 +81,7 @@ export type InstagramMedia = {
 export async function getInstagramMedia(accessToken: string) {
   const params = new URLSearchParams({
     fields:
-      "id,caption,media_type,media_product_type,media_url,permalink,timestamp,like_count,comments_count",
+      "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count",
     limit: "50",
     access_token: accessToken,
   });
@@ -92,14 +93,27 @@ export async function getInstagramMedia(accessToken: string) {
   return json.data;
 }
 
-/** Best-effort: not every media type/permission combo supports insights. */
-export async function getInstagramMediaReach(mediaId: string, accessToken: string) {
-  const params = new URLSearchParams({ metric: "reach", access_token: accessToken });
+export type InstagramMediaInsights = { reach: number; saved: number; videoViews: number };
+
+/**
+ * Best-effort: not every media type/permission combo supports insights, and
+ * the valid metric set differs by media_product_type, so request only what
+ * that type supports and default anything missing to 0 rather than failing.
+ */
+export async function getInstagramMediaInsights(
+  mediaId: string,
+  mediaProductType: string | undefined,
+  accessToken: string
+): Promise<InstagramMediaInsights> {
+  const metrics = mediaProductType === "REELS" ? "reach,saved,plays" : "reach,saved";
+  const params = new URLSearchParams({ metric: metrics, access_token: accessToken });
   const res = await fetch(`${IG_GRAPH_URL}/${mediaId}/insights?${params.toString()}`);
-  if (!res.ok) return null;
+  const empty = { reach: 0, saved: 0, videoViews: 0 };
+  if (!res.ok) return empty;
   const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
-  const reach = json.data?.find((m) => m.name === "reach");
-  return reach?.values?.[0]?.value ?? null;
+  const valueFor = (name: string) =>
+    json.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
+  return { reach: valueFor("reach"), saved: valueFor("saved"), videoViews: valueFor("plays") };
 }
 
 export type InstagramMessage = {
