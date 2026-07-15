@@ -14,5 +14,5 @@ export async function signIn(_prevState: { error?: string } | undefined, formDat
     return { error: error.message };
   }
 
-  redirect("/ideas");
+  redirect("/dashboard");
 }
