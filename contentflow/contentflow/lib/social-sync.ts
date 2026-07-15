@@ -3,6 +3,7 @@ import {
   getInstagramMedia,
   getInstagramMediaInsights,
   getInstagramConversations,
+  getInstagramAccountStats,
   type InstagramMedia,
 } from "@/lib/instagram";
 import type { SocialAccountModel } from "@/lib/generated/prisma/models";
@@ -34,10 +35,35 @@ export async function syncInstagramAccount(account: SocialAccountModel) {
 
   await syncInstagramPosts(account, brand.workspaceId, owner.userId);
   await syncInstagramMessages(account, brand.workspaceId);
+  await syncInstagramAccountStats(account);
 
   await prisma.socialAccount.update({
     where: { id: account.id },
     data: { lastSyncedAt: new Date() },
+  });
+}
+
+async function syncInstagramAccountStats(account: SocialAccountModel) {
+  const stats = await getInstagramAccountStats(account.oauthAccessToken!).catch(() => null);
+  if (!stats) return;
+
+  await prisma.socialAccount.update({
+    where: { id: account.id },
+    data: {
+      followersCount: stats.followersCount,
+      followingCount: stats.followingCount,
+      mediaCount: stats.mediaCount,
+      profilePictureUrl: stats.profilePictureUrl,
+    },
+  });
+
+  await prisma.accountSnapshot.create({
+    data: {
+      socialAccountId: account.id,
+      followersCount: stats.followersCount,
+      followingCount: stats.followingCount,
+      mediaCount: stats.mediaCount,
+    },
   });
 }
 
