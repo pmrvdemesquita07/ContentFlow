@@ -1,23 +1,18 @@
 import { prisma } from "@/lib/db";
 import type { ContentStatus } from "@/lib/generated/prisma/enums";
 
+export { DASHBOARD_RANGES, resolveDateRange } from "@/lib/date-range";
+export type { DashboardRangeKey, ResolvedRange } from "@/lib/date-range";
+import type { ResolvedRange } from "@/lib/date-range";
+
 const ENGAGEMENT_ALERT_THRESHOLD = 500;
-
-export const DASHBOARD_RANGES = {
-  "7d": { label: "7 days", days: 7 },
-  "30d": { label: "30 days", days: 30 },
-  "90d": { label: "90 days", days: 90 },
-  "1y": { label: "1 year", days: 365 },
-} as const;
-
-export type DashboardRange = keyof typeof DASHBOARD_RANGES;
 
 function dayKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export async function getDashboardData(brandId: string, range: DashboardRange = "30d") {
-  const rangeStart = new Date(Date.now() - DASHBOARD_RANGES[range].days * 24 * 60 * 60 * 1000);
+export async function getDashboardData(brandId: string, range: ResolvedRange) {
+  const { start, end } = range;
 
   const [statusCounts, contentWithMetrics, socialAccounts, accountSnapshots, periodMetrics] =
     await Promise.all([
@@ -27,17 +22,17 @@ export async function getDashboardData(brandId: string, range: DashboardRange = 
         _count: { _all: true },
       }),
       prisma.content.findMany({
-        where: { brandId, metrics: { some: {} }, publishedAt: { gte: rangeStart } },
+        where: { brandId, metrics: { some: {} }, publishedAt: { gte: start, lte: end } },
         include: { metrics: true },
         orderBy: { updatedAt: "desc" },
       }),
       prisma.socialAccount.findMany({ where: { brandId } }),
       prisma.accountSnapshot.findMany({
-        where: { socialAccount: { brandId }, capturedAt: { gte: rangeStart } },
+        where: { socialAccount: { brandId }, capturedAt: { gte: start, lte: end } },
         orderBy: { capturedAt: "asc" },
       }),
       prisma.metric.findMany({
-        where: { content: { brandId }, capturedAt: { gte: rangeStart } },
+        where: { content: { brandId }, capturedAt: { gte: start, lte: end } },
         orderBy: { capturedAt: "asc" },
       }),
     ]);
