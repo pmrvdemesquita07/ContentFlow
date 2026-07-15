@@ -219,6 +219,68 @@ export async function getInstagramMediaInsights(
   };
 }
 
+export type AudienceBreakdown = { label: string; value: number }[];
+
+export type InstagramAudienceDemographics = {
+  gender: AudienceBreakdown;
+  age: AudienceBreakdown;
+  country: AudienceBreakdown;
+  city: AudienceBreakdown;
+};
+
+const EMPTY_DEMOGRAPHICS: InstagramAudienceDemographics = {
+  gender: [],
+  age: [],
+  country: [],
+  city: [],
+};
+
+/**
+ * Meta only exposes follower_demographics once an account has 100+
+ * followers, and it comes back as a single lifetime total (no history) - so
+ * accounts below that threshold, or without the right permission, just get
+ * an empty breakdown back rather than an error.
+ */
+async function fetchAudienceBreakdown(
+  breakdown: string,
+  accessToken: string
+): Promise<AudienceBreakdown> {
+  const params = new URLSearchParams({
+    metric: "follower_demographics",
+    period: "lifetime",
+    metric_type: "total_value",
+    breakdown,
+    access_token: accessToken,
+  });
+  const res = await fetch(`${IG_GRAPH_URL}/me/insights?${params.toString()}`);
+  if (!res.ok) return [];
+  const json = (await res.json()) as {
+    data?: {
+      total_value?: {
+        breakdowns?: { results?: { dimension_values: string[]; value: number }[] }[];
+      };
+    }[];
+  };
+  const results = json.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
+  return results.map((r) => ({ label: r.dimension_values[0], value: r.value }));
+}
+
+export async function getInstagramAudienceDemographics(
+  accessToken: string
+): Promise<InstagramAudienceDemographics> {
+  try {
+    const [gender, age, country, city] = await Promise.all([
+      fetchAudienceBreakdown("gender", accessToken),
+      fetchAudienceBreakdown("age", accessToken),
+      fetchAudienceBreakdown("country", accessToken),
+      fetchAudienceBreakdown("city", accessToken),
+    ]);
+    return { gender, age, country, city };
+  } catch {
+    return EMPTY_DEMOGRAPHICS;
+  }
+}
+
 export type InstagramMessage = {
   id: string;
   from?: { username?: string; id?: string };
