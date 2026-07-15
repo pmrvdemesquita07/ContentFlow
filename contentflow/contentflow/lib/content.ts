@@ -2,7 +2,11 @@ import { prisma } from "@/lib/db";
 import type { ContentStatus } from "@/lib/generated/prisma/enums";
 
 const WITH_RELATIONS = {
-  include: { tasks: { orderBy: { createdAt: "asc" } }, media: true },
+  include: {
+    tasks: { orderBy: { createdAt: "asc" } },
+    media: true,
+    metrics: { orderBy: { capturedAt: "desc" }, take: 1 },
+  },
 } as const;
 
 export function getContentByStatuses(brandId: string, statuses: ContentStatus[]) {
