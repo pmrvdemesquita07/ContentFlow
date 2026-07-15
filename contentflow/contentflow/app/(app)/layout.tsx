@@ -27,13 +27,11 @@ const ACTIVE_LINKS = [
   { href: "/media", label: "Media", icon: Image },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/mailbox", label: "Mailbox", icon: Inbox },
+  { href: "/social-hub", label: "Social Hub", icon: Share2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-const SOON_LINKS = [
-  { label: "Social Hub", icon: Share2 },
-  { label: "Assistants", icon: Sparkles },
-];
+const SOON_LINKS = [{ label: "Assistants", icon: Sparkles }];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
