@@ -5,7 +5,7 @@ import type {
 } from "@/lib/generated/prisma/models";
 
 export type ContentWithRelations = ContentGetPayload<{
-  include: { tasks: true; media: true };
+  include: { tasks: true; media: true; metrics: true };
 }>;
 
 export type BrandWithVoice = BrandGetPayload<{
