@@ -1,28 +1,43 @@
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 
-/**
- * Phase 1/2 scope: one workspace, one brand per user - no switcher yet.
- * Resolves the user's first (and, for now, only) workspace membership and brand.
- */
-export async function getCurrentWorkspaceAndBrand(userId: string) {
-  const membership = await prisma.workspaceMember.findFirst({
+export const BRAND_COOKIE = "cf_brand_id";
+
+export async function getUserWorkspaces(userId: string) {
+  const memberships = await prisma.workspaceMember.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
     include: {
       workspace: {
         include: {
-          brands: {
-            orderBy: { createdAt: "asc" },
-            take: 1,
-            include: { brandVoice: true },
-          },
+          brands: { orderBy: { createdAt: "asc" }, include: { brandVoice: true } },
         },
       },
     },
   });
+  return memberships.map((m) => m.workspace);
+}
 
-  if (!membership) return null;
+/**
+ * Resolves the brand/workspace the user is currently working in. Prefers the
+ * brand saved in the switcher cookie (if it still belongs to one of their
+ * workspaces), otherwise falls back to their first workspace's first brand.
+ */
+export async function getCurrentWorkspaceAndBrand(userId: string) {
+  const workspaces = await getUserWorkspaces(userId);
+  if (workspaces.length === 0) return null;
 
-  const brand = membership.workspace.brands[0] ?? null;
-  return { workspace: membership.workspace, brand };
+  const cookieStore = await cookies();
+  const preferredBrandId = cookieStore.get(BRAND_COOKIE)?.value;
+
+  if (preferredBrandId) {
+    for (const workspace of workspaces) {
+      const brand = workspace.brands.find((b) => b.id === preferredBrandId);
+      if (brand) return { workspace, brand, workspaces };
+    }
+  }
+
+  const workspace = workspaces[0];
+  const brand = workspace.brands[0] ?? null;
+  return { workspace, brand, workspaces };
 }
