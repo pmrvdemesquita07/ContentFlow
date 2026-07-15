@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getAnalyticsData } from "@/lib/analytics";
+import { getBrandAudienceDemographics } from "@/lib/demographics";
 import { DASHBOARD_RANGES, type DashboardRange } from "@/lib/dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,10 @@ export default async function AnalyticsPage({
     engagementRates,
   } = await getAnalyticsData(ctx.brand.id, activeRange);
 
+  const demographics = await getBrandAudienceDemographics(ctx.brand.id);
+
   const hasStoryMetrics = totals.replies + totals.exits + totals.tapsForward > 0;
+  const percentFormatter = (v: number) => `${v.toFixed(0)}%`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,6 +99,92 @@ export default async function AnalyticsPage({
         </div>
       </div>
 
+      {hasAnyAccounts && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
+          <Card>
+            <CardContent className="pt-5">
+              <p className="text-xs text-muted-foreground">Followers</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-semibold">
+                  {followerTotals.followers.toLocaleString()}
+                </p>
+                <GrowthBadge value={followerGrowth.followers} />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-5">
+              <p className="text-xs text-muted-foreground">Following</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-semibold">
+                  {followerTotals.following.toLocaleString()}
+                </p>
+                <GrowthBadge value={followerGrowth.following} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {hasAnyAccounts && (
+        <Card>
+          <CardContent className="pt-5">
+            <h2 className="text-sm font-semibold">Audience</h2>
+            {!demographics.hasData ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                No audience breakdown yet. Instagram only exposes gender, age, and location data
+                for accounts with 100+ followers.
+              </p>
+            ) : (
+              <div className="mt-4 grid gap-6 lg:grid-cols-2">
+                {demographics.gender.length > 0 && (
+                  <div>
+                    <p className="mb-3 text-xs font-medium text-muted-foreground">Gender</p>
+                    <BarChart
+                      items={demographics.gender.map((d) => ({ label: d.label, value: d.percent }))}
+                      valueFormatter={percentFormatter}
+                    />
+                  </div>
+                )}
+                {demographics.age.length > 0 && (
+                  <div>
+                    <p className="mb-3 text-xs font-medium text-muted-foreground">Age</p>
+                    <BarChart
+                      items={demographics.age.map((d) => ({ label: d.label, value: d.percent }))}
+                      valueFormatter={percentFormatter}
+                    />
+                  </div>
+                )}
+                {demographics.topCountries.length > 0 && (
+                  <div>
+                    <p className="mb-3 text-xs font-medium text-muted-foreground">Top countries</p>
+                    <BarChart
+                      items={demographics.topCountries.map((d) => ({
+                        label: d.label,
+                        value: d.percent,
+                      }))}
+                      valueFormatter={percentFormatter}
+                    />
+                  </div>
+                )}
+                {demographics.topCities.length > 0 && (
+                  <div>
+                    <p className="mb-3 text-xs font-medium text-muted-foreground">Top cities</p>
+                    <BarChart
+                      items={demographics.topCities.map((d) => ({
+                        label: d.label,
+                        value: d.percent,
+                      }))}
+                      valueFormatter={percentFormatter}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {!hasAnyMetrics ? (
         <Card>
           <CardContent className="pt-5">
@@ -106,33 +196,6 @@ export default async function AnalyticsPage({
         </Card>
       ) : (
         <>
-          {hasAnyAccounts && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-              <Card>
-                <CardContent className="pt-5">
-                  <p className="text-xs text-muted-foreground">Followers</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-semibold">
-                      {followerTotals.followers.toLocaleString()}
-                    </p>
-                    <GrowthBadge value={followerGrowth.followers} />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-5">
-                  <p className="text-xs text-muted-foreground">Following</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-semibold">
-                      {followerTotals.following.toLocaleString()}
-                    </p>
-                    <GrowthBadge value={followerGrowth.following} />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
             {STAT_LABELS.map(({ key, label }) => (
               <Card key={key}>
