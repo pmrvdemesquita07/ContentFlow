@@ -163,6 +163,10 @@ model Content {
   createdBy   String        @db.Uuid
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  /// Set when this row was imported from a connected social account
+  /// (the platform's post/media id) instead of authored in ContentFlow.
+  externalId  String?
+  externalUrl String?
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -172,6 +176,7 @@ model Content {
   metrics   Metric[]
   messages  Message[]
 
+  @@unique([brandId, externalId])
   @@index([workspaceId, status])
   @@index([brandId, status])
   @@index([scheduledAt])
@@ -234,6 +239,10 @@ model SocialAccount {
   oauthRefreshToken String?
   status            SocialAccountStatus @default(disconnected)
   connectedAt       DateTime?
+  externalAccountId String?
+  externalUsername  String?
+  tokenExpiresAt    DateTime?
+  lastSyncedAt      DateTime?
 
   brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
@@ -254,11 +263,14 @@ model Message {
   body        String         @db.Text
   receivedAt  DateTime       @default(now())
   status      MessageStatus  @default(unread)
+  /// The platform's message id, so re-syncing doesn't create duplicates.
+  externalId  String?
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
   content   Content?  @relation(fields: [contentId], references: [id], onDelete: SetNull)
 
+  @@unique([brandId, externalId])
   @@index([workspaceId, status])
   @@map("messages")
 }
