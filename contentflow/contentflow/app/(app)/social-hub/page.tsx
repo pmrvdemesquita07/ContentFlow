@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DisconnectButton } from "./disconnect-button";
+import { SyncButton } from "./sync-button";
 import type { SocialPlatform } from "@/lib/generated/prisma/enums";
 
 const PLATFORMS: { key: SocialPlatform; label: string; live: boolean }[] = [
@@ -52,18 +53,30 @@ export default async function SocialHubPage({
           return (
             <Card key={platform.key}>
               <CardContent className="flex items-center justify-between pt-5">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium">{platform.label}</span>
-                  {account ? (
-                    <Badge variant="success">Connected</Badge>
-                  ) : platform.live ? (
-                    <Badge variant="outline">Not connected</Badge>
-                  ) : (
-                    <Badge variant="outline">Coming soon</Badge>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium">{platform.label}</span>
+                    {account ? (
+                      <Badge variant="success">Connected</Badge>
+                    ) : platform.live ? (
+                      <Badge variant="outline">Not connected</Badge>
+                    ) : (
+                      <Badge variant="outline">Coming soon</Badge>
+                    )}
+                  </div>
+                  {account && (
+                    <p className="text-xs text-muted-foreground">
+                      {account.lastSyncedAt
+                        ? `Last synced ${new Date(account.lastSyncedAt).toLocaleString()}`
+                        : "Not synced yet"}
+                    </p>
                   )}
                 </div>
                 {account ? (
-                  <DisconnectButton id={account.id} />
+                  <div className="flex items-center gap-2">
+                    <SyncButton id={account.id} />
+                    <DisconnectButton id={account.id} />
+                  </div>
                 ) : platform.live ? (
                   <Button size="sm" asChild>
                     <a href="/auth/instagram/start">Connect</a>
