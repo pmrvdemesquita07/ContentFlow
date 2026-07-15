@@ -17,6 +17,7 @@ import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { BrandSwitcher } from "@/components/workspace/brand-switcher";
 
 const ACTIVE_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -42,9 +43,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-60 shrink-0 flex-col border-r bg-muted/30 p-4">
-        <div className="mb-6 px-2">
-          <p className="text-sm font-semibold">{ctx.workspace.name}</p>
-          <p className="text-xs text-muted-foreground">{ctx.brand?.name}</p>
+        <div className="mb-6">
+          <BrandSwitcher
+            workspaces={ctx.workspaces}
+            currentWorkspaceName={ctx.workspace.name}
+            currentBrandId={ctx.brand?.id}
+            currentBrandName={ctx.brand?.name}
+          />
         </div>
         <nav className="flex flex-1 flex-col gap-0.5">
           {ACTIVE_LINKS.map((link) => (
