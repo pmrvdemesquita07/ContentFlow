@@ -4,6 +4,8 @@ import {
   getInstagramMediaInsights,
   getInstagramConversations,
   getInstagramAccountStats,
+  getInstagramStories,
+  getInstagramStoryInsights,
   type InstagramMedia,
 } from "@/lib/instagram";
 import type { SocialAccountModel } from "@/lib/generated/prisma/models";
@@ -34,6 +36,7 @@ export async function syncInstagramAccount(account: SocialAccountModel) {
   if (!owner) return;
 
   await syncInstagramPosts(account, brand.workspaceId, owner.userId);
+  await syncInstagramStories(account, brand.workspaceId, owner.userId);
   await syncInstagramMessages(account, brand.workspaceId);
   await syncInstagramAccountStats(account);
 
@@ -119,6 +122,57 @@ async function syncInstagramPosts(
         reach: insights.reach,
         saved: insights.saved,
         videoViews: insights.videoViews,
+      },
+    });
+  }
+}
+
+async function syncInstagramStories(
+  account: SocialAccountModel,
+  workspaceId: string,
+  userId: string
+) {
+  const stories = await getInstagramStories(account.oauthAccessToken!).catch(() => []);
+
+  for (const story of stories) {
+    const thumbnailUrl = story.thumbnail_url ?? story.media_url ?? null;
+    const content = await prisma.content.upsert({
+      where: { brandId_externalId: { brandId: account.brandId, externalId: story.id } },
+      update: {
+        externalUrl: story.permalink ?? null,
+        thumbnailUrl,
+      },
+      create: {
+        workspaceId,
+        brandId: account.brandId,
+        title: "Instagram story",
+        type: "story",
+        status: "published",
+        platforms: ["instagram"],
+        publishedAt: new Date(story.timestamp),
+        createdBy: userId,
+        externalId: story.id,
+        externalUrl: story.permalink ?? null,
+        thumbnailUrl,
+      },
+    });
+
+    // Stories don't support likes/saves in the API - only reach and DM replies.
+    const insights = await getInstagramStoryInsights(
+      story.id,
+      account.oauthAccessToken!
+    ).catch(() => ({ reach: 0, replies: 0 }));
+
+    await prisma.metric.create({
+      data: {
+        contentId: content.id,
+        platform: "instagram",
+        likes: 0,
+        comments: insights.replies,
+        shares: 0,
+        reach: insights.reach,
+        saved: 0,
+        videoViews: 0,
       },
     });
   }
