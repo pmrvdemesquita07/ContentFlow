@@ -171,7 +171,10 @@ export async function getInstagramStoryInsights(
   });
   const res = await fetch(`${IG_GRAPH_URL}/${storyId}/insights?${params.toString()}`);
   const empty = { reach: 0, replies: 0, exits: 0, tapsForward: 0 };
-  if (!res.ok) return empty;
+  if (!res.ok) {
+    console.error(`Instagram story insights failed for ${storyId}: ${res.status} ${await res.text()}`);
+    return empty;
+  }
   const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
   const valueFor = (name: string) =>
     json.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
@@ -207,7 +210,10 @@ export async function getInstagramMediaInsights(
   const params = new URLSearchParams({ metric: metrics, access_token: accessToken });
   const res = await fetch(`${IG_GRAPH_URL}/${mediaId}/insights?${params.toString()}`);
   const empty = { reach: 0, saved: 0, videoViews: 0, impressions: 0 };
-  if (!res.ok) return empty;
+  if (!res.ok) {
+    console.error(`Instagram media insights failed for ${mediaId}: ${res.status} ${await res.text()}`);
+    return empty;
+  }
   const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
   const valueFor = (name: string) =>
     json.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
@@ -253,7 +259,12 @@ async function fetchAudienceBreakdown(
     access_token: accessToken,
   });
   const res = await fetch(`${IG_GRAPH_URL}/me/insights?${params.toString()}`);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(
+      `Instagram follower_demographics (${breakdown}) failed: ${res.status} ${await res.text()}`
+    );
+    return [];
+  }
   const json = (await res.json()) as {
     data?: {
       total_value?: {
