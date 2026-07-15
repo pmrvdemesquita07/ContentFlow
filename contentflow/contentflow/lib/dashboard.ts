@@ -36,7 +36,7 @@ export async function getDashboardData(brandId: string) {
         }
       }
       const interactions = [...latestByPlatform.values()].reduce(
-        (sum, m) => sum + m.likes + m.comments + m.shares,
+        (sum, m) => sum + m.likes + m.comments + m.shares + m.saved,
         0
       );
       return { content, interactions };
