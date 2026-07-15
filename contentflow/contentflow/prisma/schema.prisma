@@ -259,8 +259,9 @@ model SocialAccount {
   mediaCount         Int?
   profilePictureUrl  String?
 
-  brand     Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  snapshots AccountSnapshot[]
+  brand        Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  snapshots    AccountSnapshot[]
+  demographics AudienceDemographic?
 
   @@unique([brandId, platform])
   @@map("social_accounts")
@@ -280,6 +281,25 @@ model AccountSnapshot {
 
   @@index([socialAccountId, capturedAt])
   @@map("account_snapshots")
+}
+
+/// Follower audience breakdown from Instagram's follower_demographics
+/// insight - only exposed once an account has 100+ followers, and only ever
+/// given as a current lifetime snapshot (no history), so we just overwrite
+/// this one row on every sync rather than keeping a time series.
+/// Each *Data field is an array of { label: string, value: number } objects.
+model AudienceDemographic {
+  id              String   @id @default(uuid())
+  socialAccountId String   @unique
+  genderData      Json
+  ageData         Json
+  countryData     Json
+  cityData        Json
+  capturedAt      DateTime @default(now())
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("audience_demographics")
 }
 
 /// contentId is optional (a DM isn't always about one post), but every
