@@ -61,7 +61,7 @@ export async function getDashboardData(brandId: string, range: DashboardRange = 
         }
       }
       const interactions = [...latestByPlatform.values()].reduce(
-        (sum, m) => sum + m.likes + m.comments + m.shares + m.saved,
+        (sum, m) => sum + m.likes + m.comments + m.shares + m.saved + m.replies,
         0
       );
       return { content, interactions };
@@ -104,7 +104,7 @@ export async function getDashboardData(brandId: string, range: DashboardRange = 
   const engagementByDay = new Map<string, number>();
   for (const m of latestMetricPerContentDay.values()) {
     const key = dayKey(m.capturedAt);
-    const interactions = m.likes + m.comments + m.shares + m.saved;
+    const interactions = m.likes + m.comments + m.shares + m.saved + m.replies;
     engagementByDay.set(key, (engagementByDay.get(key) ?? 0) + interactions);
   }
   const engagementSeries = [...engagementByDay.entries()]
