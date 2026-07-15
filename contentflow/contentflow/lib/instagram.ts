@@ -10,6 +10,7 @@ const SCOPES = [
   "instagram_business_content_publish",
   "instagram_business_manage_messages",
   "instagram_business_manage_comments",
+  "instagram_business_manage_insights",
 ].join(",");
 
 function redirectUri() {
@@ -62,4 +63,67 @@ export async function getInstagramProfile(accessToken: string) {
     throw new Error(`Instagram profile fetch failed: ${await res.text()}`);
   }
   return res.json() as Promise<{ user_id: string; username: string }>;
+}
+
+export type InstagramMedia = {
+  id: string;
+  caption?: string;
+  media_type: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
+  media_product_type?: "FEED" | "REELS" | "STORY";
+  media_url?: string;
+  permalink?: string;
+  timestamp: string;
+  like_count?: number;
+  comments_count?: number;
+};
+
+export async function getInstagramMedia(accessToken: string) {
+  const params = new URLSearchParams({
+    fields:
+      "id,caption,media_type,media_product_type,media_url,permalink,timestamp,like_count,comments_count",
+    limit: "50",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${IG_GRAPH_URL}/me/media?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Instagram media fetch failed: ${await res.text()}`);
+  }
+  const json = (await res.json()) as { data: InstagramMedia[] };
+  return json.data;
+}
+
+/** Best-effort: not every media type/permission combo supports insights. */
+export async function getInstagramMediaReach(mediaId: string, accessToken: string) {
+  const params = new URLSearchParams({ metric: "reach", access_token: accessToken });
+  const res = await fetch(`${IG_GRAPH_URL}/${mediaId}/insights?${params.toString()}`);
+  if (!res.ok) return null;
+  const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
+  const reach = json.data?.find((m) => m.name === "reach");
+  return reach?.values?.[0]?.value ?? null;
+}
+
+export type InstagramMessage = {
+  id: string;
+  from?: { username?: string; id?: string };
+  message?: string;
+  created_time?: string;
+};
+
+export type InstagramConversation = {
+  id: string;
+  messages?: { data: InstagramMessage[] };
+};
+
+export async function getInstagramConversations(accessToken: string) {
+  const params = new URLSearchParams({
+    platform: "instagram",
+    fields: "messages.limit(20){id,from,message,created_time}",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${IG_GRAPH_URL}/me/conversations?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Instagram conversations fetch failed: ${await res.text()}`);
+  }
+  const json = (await res.json()) as { data: InstagramConversation[] };
+  return json.data;
 }
