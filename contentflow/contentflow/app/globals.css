@@ -126,3 +126,13 @@
     color: var(--color-foreground);
   }
 }
+
+@media print {
+  aside,
+  .print-hide {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}
