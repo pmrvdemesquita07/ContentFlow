@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import {
   getInstagramMedia,
-  getInstagramMediaReach,
+  getInstagramMediaInsights,
   getInstagramConversations,
   type InstagramMedia,
 } from "@/lib/instagram";
@@ -50,12 +50,16 @@ async function syncInstagramPosts(
 
   for (const item of media) {
     const title = item.caption?.slice(0, 120) || "Instagram post";
+    // Instagram's CDN links expire after a while, so the thumbnail is
+    // refreshed on every sync rather than only set once on first import.
+    const thumbnailUrl = item.thumbnail_url ?? item.media_url ?? null;
     const content = await prisma.content.upsert({
       where: { brandId_externalId: { brandId: account.brandId, externalId: item.id } },
       update: {
         title,
         body: item.caption ?? null,
         externalUrl: item.permalink ?? null,
+        thumbnailUrl,
       },
       create: {
         workspaceId,
@@ -69,12 +73,15 @@ async function syncInstagramPosts(
         createdBy: userId,
         externalId: item.id,
         externalUrl: item.permalink ?? null,
+        thumbnailUrl,
       },
     });
 
-    const reach = await getInstagramMediaReach(item.id, account.oauthAccessToken!).catch(
-      () => null
-    );
+    const insights = await getInstagramMediaInsights(
+      item.id,
+      item.media_product_type,
+      account.oauthAccessToken!
+    ).catch(() => ({ reach: 0, saved: 0, videoViews: 0 }));
 
     await prisma.metric.create({
       data: {
@@ -83,7 +90,9 @@ async function syncInstagramPosts(
         likes: item.like_count ?? 0,
         comments: item.comments_count ?? 0,
         shares: 0,
-        reach: reach ?? 0,
+        reach: insights.reach,
+        saved: insights.saved,
+        videoViews: insights.videoViews,
       },
     });
   }
