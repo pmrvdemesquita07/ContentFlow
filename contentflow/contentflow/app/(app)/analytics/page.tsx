@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart } from "@/components/charts/bar-chart";
 import { GrowthBadge } from "@/components/analytics/growth-badge";
 import { DateRangePicker } from "@/components/analytics/date-range-picker";
+import { ExportCsvButton } from "@/components/analytics/export-csv-button";
+import { toCsv } from "@/lib/csv";
 
 const STAT_LABELS = [
   { key: "likes", label: "Likes" },
@@ -65,6 +67,41 @@ export default async function AnalyticsPage({
   const hasStoryMetrics = totals.replies + totals.exits + totals.tapsForward > 0;
   const percentFormatter = (v: number) => `${v.toFixed(0)}%`;
 
+  const csv = toCsv(
+    [
+      "Title",
+      "Type",
+      "Likes",
+      "Comments",
+      "Shares",
+      "Saved",
+      "Reach",
+      "Video views",
+      "Replies",
+      "Exits",
+      "Taps forward",
+      "Interactions",
+      "Engagement rate (followers) %",
+      "Engagement rate (views) %",
+    ],
+    perPost.map((p) => [
+      p.title,
+      TYPE_LABELS[p.type] ?? p.type,
+      p.likes,
+      p.comments,
+      p.shares,
+      p.saved,
+      p.reach,
+      p.videoViews,
+      p.replies,
+      p.exits,
+      p.tapsForward,
+      p.interactions,
+      p.engagementRateByFollowers?.toFixed(1) ?? "",
+      p.engagementRateByViews?.toFixed(1) ?? "",
+    ])
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -75,7 +112,10 @@ export default async function AnalyticsPage({
             {resolvedRange.label}; growth compares against the equivalent previous period.
           </p>
         </div>
-        <DateRangePicker basePath="/analytics" current={resolvedRange} />
+        <div className="flex items-center gap-3">
+          <DateRangePicker basePath="/analytics" current={resolvedRange} />
+          <ExportCsvButton filename={`analytics-${resolvedRange.key}.csv`} csv={csv} />
+        </div>
       </div>
 
       {hasAnyAccounts && (
