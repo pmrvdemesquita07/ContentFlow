@@ -34,5 +34,5 @@ export async function createWorkspaceAndBrand(
     },
   });
 
-  redirect("/ideas");
+  redirect("/dashboard");
 }
