@@ -108,7 +108,8 @@ export default async function PostsPage({
                           post.metrics[0].likes +
                           post.metrics[0].comments +
                           post.metrics[0].shares +
-                          post.metrics[0].saved
+                          post.metrics[0].saved +
+                          post.metrics[0].replies
                         ).toLocaleString()}{" "}
                         interactions
                       </p>
