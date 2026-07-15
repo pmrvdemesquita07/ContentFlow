@@ -94,11 +94,32 @@ export default async function PostsPage({
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  {post.scheduledAt && (
-                    <span>{new Date(post.scheduledAt).toLocaleString()}</span>
+                <div className="flex items-center gap-4">
+                  {post.metrics[0] && (
+                    <div className="hidden text-right text-xs text-muted-foreground sm:block">
+                      <p>
+                        {post.metrics[0].likes.toLocaleString()} likes ·{" "}
+                        {post.metrics[0].comments.toLocaleString()} comments
+                        {post.metrics[0].videoViews > 0 &&
+                          ` · ${post.metrics[0].videoViews.toLocaleString()} views`}
+                      </p>
+                      <p>
+                        {(
+                          post.metrics[0].likes +
+                          post.metrics[0].comments +
+                          post.metrics[0].shares +
+                          post.metrics[0].saved
+                        ).toLocaleString()}{" "}
+                        interactions
+                      </p>
+                    </div>
                   )}
-                  <StatusBadge status={post.status} />
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    {post.scheduledAt && (
+                      <span>{new Date(post.scheduledAt).toLocaleString()}</span>
+                    )}
+                    <StatusBadge status={post.status} />
+                  </div>
                 </div>
               </div>
             </ContentDetailDialog>
