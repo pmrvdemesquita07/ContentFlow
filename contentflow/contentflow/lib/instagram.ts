@@ -125,6 +125,51 @@ export async function getInstagramMedia(accessToken: string) {
   return json.data;
 }
 
+/**
+ * Instagram only exposes currently-active stories (posted in the last 24h) -
+ * there is no API for historical stories. Once synced here, the record
+ * persists in our own database even after Instagram's copy expires, so
+ * syncing regularly is what builds up a story archive over time.
+ */
+export type InstagramStory = {
+  id: string;
+  media_type: "IMAGE" | "VIDEO";
+  media_url?: string;
+  thumbnail_url?: string;
+  permalink?: string;
+  timestamp: string;
+};
+
+export async function getInstagramStories(accessToken: string) {
+  const params = new URLSearchParams({
+    fields: "id,media_type,media_url,thumbnail_url,permalink,timestamp",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${IG_GRAPH_URL}/me/stories?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Instagram stories fetch failed: ${await res.text()}`);
+  }
+  const json = (await res.json()) as { data: InstagramStory[] };
+  return json.data;
+}
+
+export type InstagramStoryInsights = { reach: number; replies: number };
+
+/** Stories don't support likes/comments/saves in the API - only reach and DM replies. */
+export async function getInstagramStoryInsights(
+  storyId: string,
+  accessToken: string
+): Promise<InstagramStoryInsights> {
+  const params = new URLSearchParams({ metric: "reach,replies", access_token: accessToken });
+  const res = await fetch(`${IG_GRAPH_URL}/${storyId}/insights?${params.toString()}`);
+  const empty = { reach: 0, replies: 0 };
+  if (!res.ok) return empty;
+  const json = (await res.json()) as { data?: { name: string; values: { value: number }[] }[] };
+  const valueFor = (name: string) =>
+    json.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0;
+  return { reach: valueFor("reach"), replies: valueFor("replies") };
+}
+
 export type InstagramMediaInsights = { reach: number; saved: number; videoViews: number };
 
 /**
