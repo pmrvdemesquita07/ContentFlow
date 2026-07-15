@@ -1,14 +1,13 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getAnalyticsData } from "@/lib/analytics";
 import { getBrandAudienceDemographics } from "@/lib/demographics";
-import { DASHBOARD_RANGES, type DashboardRange } from "@/lib/dashboard";
+import { resolveDateRange } from "@/lib/dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart } from "@/components/charts/bar-chart";
 import { GrowthBadge } from "@/components/analytics/growth-badge";
-import { cn } from "@/lib/utils";
+import { DateRangePicker } from "@/components/analytics/date-range-picker";
 
 const STAT_LABELS = [
   { key: "likes", label: "Likes" },
@@ -40,11 +39,9 @@ function formatRate(value: number | null) {
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; from?: string; to?: string }>;
 }) {
-  const { range } = await searchParams;
-  const activeRange: DashboardRange =
-    range && range in DASHBOARD_RANGES ? (range as DashboardRange) : "30d";
+  const resolvedRange = resolveDateRange(await searchParams);
 
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
@@ -61,7 +58,7 @@ export default async function AnalyticsPage({
     followerGrowth,
     hasAnyAccounts,
     engagementRates,
-  } = await getAnalyticsData(ctx.brand.id, activeRange);
+  } = await getAnalyticsData(ctx.brand.id, resolvedRange);
 
   const demographics = await getBrandAudienceDemographics(ctx.brand.id);
 
@@ -74,28 +71,11 @@ export default async function AnalyticsPage({
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
           <p className="text-sm text-muted-foreground">
-            Real performance only - nothing here is estimated. Growth compares now vs the start
-            of the selected period.
+            Real performance only - nothing here is estimated. Showing posts published in{" "}
+            {resolvedRange.label}; growth compares against the equivalent previous period.
           </p>
         </div>
-        <div className="flex gap-1">
-          {(Object.entries(DASHBOARD_RANGES) as [DashboardRange, { label: string }][]).map(
-            ([key, { label }]) => (
-              <Link
-                key={key}
-                href={`/analytics?range=${key}`}
-                className={cn(
-                  "rounded-md px-2.5 py-1.5 text-sm font-medium",
-                  activeRange === key
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {label}
-              </Link>
-            )
-          )}
-        </div>
+        <DateRangePicker basePath="/analytics" current={resolvedRange} />
       </div>
 
       {hasAnyAccounts && (
