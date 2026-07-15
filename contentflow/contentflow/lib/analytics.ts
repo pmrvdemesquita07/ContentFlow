@@ -2,7 +2,18 @@ import { prisma } from "@/lib/db";
 import type { ContentType } from "@/lib/generated/prisma/enums";
 import { DASHBOARD_RANGES, type DashboardRange } from "@/lib/dashboard";
 
-const EMPTY_TOTALS = { likes: 0, comments: 0, shares: 0, reach: 0, saved: 0, videoViews: 0 };
+const EMPTY_TOTALS = {
+  likes: 0,
+  comments: 0,
+  shares: 0,
+  reach: 0,
+  saved: 0,
+  videoViews: 0,
+  impressions: 0,
+  replies: 0,
+  exits: 0,
+  tapsForward: 0,
+};
 
 type Totals = typeof EMPTY_TOTALS;
 
@@ -13,7 +24,21 @@ function addMetric<T extends Totals>(acc: T, m: Totals) {
   acc.reach += m.reach;
   acc.saved += m.saved;
   acc.videoViews += m.videoViews;
+  acc.impressions += m.impressions;
+  acc.replies += m.replies;
+  acc.exits += m.exits;
+  acc.tapsForward += m.tapsForward;
   return acc;
+}
+
+function interactionsOf(m: Totals) {
+  return m.likes + m.comments + m.shares + m.saved + m.replies;
+}
+
+/** Interactions / views (video plays, else impressions, else reach) - null when there's nothing to divide by. */
+function engagementRateByViews(interactions: number, m: Totals): number | null {
+  const views = m.videoViews || m.impressions || m.reach;
+  return views > 0 ? (interactions / views) * 100 : null;
 }
 
 /** % change vs the previous value; null when there's no baseline to compare against ("new"). */
@@ -57,6 +82,7 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
   const latest = [...latestByContentPlatform.values()];
 
   const totals = latest.reduce((acc, m) => addMetric(acc, m), { ...EMPTY_TOTALS });
+  const totalInteractions = interactionsOf(totals);
 
   // "As of" a cutoff: the latest snapshot per content+platform that existed
   // by that point in time, summed. Comparing "now" against "as of rangeStart"
@@ -83,6 +109,10 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     reach: growthPercent(totals.reach, previousTotals.reach),
     saved: growthPercent(totals.saved, previousTotals.saved),
     videoViews: growthPercent(totals.videoViews, previousTotals.videoViews),
+    impressions: growthPercent(totals.impressions, previousTotals.impressions),
+    replies: growthPercent(totals.replies, previousTotals.replies),
+    exits: growthPercent(totals.exits, previousTotals.exits),
+    tapsForward: growthPercent(totals.tapsForward, previousTotals.tapsForward),
   };
 
   const byCampaign = new Map<string, { campaignId: string } & Totals>();
@@ -98,28 +128,37 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     byType.set(m.content.type, typeRow);
   }
 
-  const perPost = latest
-    .map((m) => ({
-      contentId: m.content.id,
-      title: m.content.title,
-      type: m.content.type,
-      thumbnailUrl: m.content.thumbnailUrl,
-      externalUrl: m.content.externalUrl,
-      likes: m.likes,
-      comments: m.comments,
-      shares: m.shares,
-      reach: m.reach,
-      saved: m.saved,
-      videoViews: m.videoViews,
-      interactions: m.likes + m.comments + m.shares + m.saved,
-    }))
-    .sort((a, b) => b.interactions - a.interactions);
-
-  // Follower totals now, vs as of the start of the selected range.
   const followerTotals = {
     followers: socialAccounts.reduce((sum, a) => sum + (a.followersCount ?? 0), 0),
     following: socialAccounts.reduce((sum, a) => sum + (a.followingCount ?? 0), 0),
   };
+
+  const perPost = latest
+    .map((m) => {
+      const interactions = interactionsOf(m);
+      return {
+        contentId: m.content.id,
+        title: m.content.title,
+        type: m.content.type,
+        thumbnailUrl: m.content.thumbnailUrl,
+        externalUrl: m.content.externalUrl,
+        likes: m.likes,
+        comments: m.comments,
+        shares: m.shares,
+        reach: m.reach,
+        saved: m.saved,
+        videoViews: m.videoViews,
+        impressions: m.impressions,
+        replies: m.replies,
+        exits: m.exits,
+        tapsForward: m.tapsForward,
+        interactions,
+        engagementRateByFollowers:
+          followerTotals.followers > 0 ? (interactions / followerTotals.followers) * 100 : null,
+        engagementRateByViews: engagementRateByViews(interactions, m),
+      };
+    })
+    .sort((a, b) => b.interactions - a.interactions);
 
   function followersAsOf(cutoff: Date) {
     const latestPerAccount = new Map<string, (typeof accountSnapshots)[number]>();
@@ -142,6 +181,12 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     following: growthPercent(followerTotals.following, previousFollowerTotals.following),
   };
 
+  const engagementRates = {
+    byFollowers:
+      followerTotals.followers > 0 ? (totalInteractions / followerTotals.followers) * 100 : null,
+    byViews: engagementRateByViews(totalInteractions, totals),
+  };
+
   return {
     totals,
     growth,
@@ -152,5 +197,6 @@ export async function getAnalyticsData(brandId: string, range: DashboardRange = 
     followerTotals,
     followerGrowth,
     hasAnyAccounts: socialAccounts.length > 0,
+    engagementRates,
   };
 }
