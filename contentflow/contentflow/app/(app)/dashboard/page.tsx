@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LineChart } from "@/components/charts/line-chart";
 import { DateRangePicker } from "@/components/analytics/date-range-picker";
+import { ExportCsvButton } from "@/components/analytics/export-csv-button";
+import { toCsv } from "@/lib/csv";
 import { ExportPdfButton } from "./export-button";
 import type { ContentStatus } from "@/lib/generated/prisma/enums";
 
@@ -38,6 +40,17 @@ export default async function DashboardPage({
     engagementSeries,
   } = await getDashboardData(ctx.brand.id, resolvedRange);
 
+  // Merge the two day-bucketed series into one row per day for the CSV export.
+  const byDay = new Map<string, { followers?: number; engagement?: number }>();
+  for (const p of followerSeries) byDay.set(p.label, { ...byDay.get(p.label), followers: p.value });
+  for (const p of engagementSeries) byDay.set(p.label, { ...byDay.get(p.label), engagement: p.value });
+  const csv = toCsv(
+    ["Date", "Followers", "Engagement"],
+    [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, row]) => [day, row.followers ?? "", row.engagement ?? ""])
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -51,6 +64,7 @@ export default async function DashboardPage({
           <div className="print-hide">
             <DateRangePicker basePath="/dashboard" current={resolvedRange} />
           </div>
+          <ExportCsvButton filename={`dashboard-${resolvedRange.key}.csv`} csv={csv} />
           <ExportPdfButton />
         </div>
       </div>
