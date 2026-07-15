@@ -1,13 +1,12 @@
-import Link from "next/link";
 import { TrendingUp } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
-import { getDashboardData, DASHBOARD_RANGES, type DashboardRange } from "@/lib/dashboard";
+import { getDashboardData, resolveDateRange } from "@/lib/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LineChart } from "@/components/charts/line-chart";
+import { DateRangePicker } from "@/components/analytics/date-range-picker";
 import { ExportPdfButton } from "./export-button";
-import { cn } from "@/lib/utils";
 import type { ContentStatus } from "@/lib/generated/prisma/enums";
 
 const STATUS_LABELS: Record<ContentStatus, string> = {
@@ -21,11 +20,9 @@ const STATUS_LABELS: Record<ContentStatus, string> = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; from?: string; to?: string }>;
 }) {
-  const { range } = await searchParams;
-  const activeRange: DashboardRange =
-    range && range in DASHBOARD_RANGES ? (range as DashboardRange) : "30d";
+  const resolvedRange = resolveDateRange(await searchParams);
 
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
@@ -39,7 +36,7 @@ export default async function DashboardPage({
     hasAnyAccounts,
     followerSeries,
     engagementSeries,
-  } = await getDashboardData(ctx.brand.id, activeRange);
+  } = await getDashboardData(ctx.brand.id, resolvedRange);
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,23 +48,8 @@ export default async function DashboardPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex gap-1 print-hide">
-            {(Object.entries(DASHBOARD_RANGES) as [DashboardRange, { label: string }][]).map(
-              ([key, { label }]) => (
-                <Link
-                  key={key}
-                  href={`/dashboard?range=${key}`}
-                  className={cn(
-                    "rounded-md px-2.5 py-1.5 text-sm font-medium",
-                    activeRange === key
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {label}
-                </Link>
-              )
-            )}
+          <div className="print-hide">
+            <DateRangePicker basePath="/dashboard" current={resolvedRange} />
           </div>
           <ExportPdfButton />
         </div>
