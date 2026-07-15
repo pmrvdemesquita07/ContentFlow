@@ -68,17 +68,30 @@ export default async function PostsPage({
           {posts.map((post) => (
             <ContentDetailDialog key={post.id} content={post}>
               <div className="flex w-full items-center justify-between gap-4 px-4 py-3 hover:bg-accent/50">
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">{post.title}</p>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="outline" className="capitalize">
-                      {post.type}
-                    </Badge>
-                    {post.platforms.map((p) => (
-                      <Badge key={p} variant="secondary" className="capitalize">
-                        {p}
+                <div className="flex min-w-0 items-center gap-3">
+                  {post.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={post.thumbnailUrl}
+                      alt=""
+                      className="size-12 shrink-0 rounded object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="size-12 shrink-0 rounded bg-muted" />
+                  )}
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="truncate text-sm font-medium">{post.title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="capitalize">
+                        {post.type}
                       </Badge>
-                    ))}
+                      {post.platforms.map((p) => (
+                        <Badge key={p} variant="secondary" className="capitalize">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
