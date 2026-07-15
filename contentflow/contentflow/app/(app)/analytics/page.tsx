@@ -16,7 +16,6 @@ const STAT_LABELS = [
   { key: "saved", label: "Saved" },
   { key: "shares", label: "Shares" },
   { key: "reach", label: "Reach" },
-  { key: "impressions", label: "Impressions" },
   { key: "videoViews", label: "Video views" },
 ] as const;
 
@@ -327,7 +326,6 @@ export default async function AnalyticsPage({
                       <span>{post.comments.toLocaleString()} comments</span>
                       <span>{post.saved.toLocaleString()} saved</span>
                       <span>{post.reach.toLocaleString()} reach</span>
-                      <span>{post.impressions.toLocaleString()} impressions</span>
                       {post.videoViews > 0 && (
                         <span>{post.videoViews.toLocaleString()} views</span>
                       )}
