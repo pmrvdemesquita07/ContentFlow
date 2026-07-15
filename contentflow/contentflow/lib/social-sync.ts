@@ -6,6 +6,7 @@ import {
   getInstagramAccountStats,
   getInstagramStories,
   getInstagramStoryInsights,
+  getInstagramAudienceDemographics,
   type InstagramMedia,
 } from "@/lib/instagram";
 import type { SocialAccountModel } from "@/lib/generated/prisma/models";
@@ -39,6 +40,7 @@ export async function syncInstagramAccount(account: SocialAccountModel) {
   await syncInstagramStories(account, brand.workspaceId, owner.userId);
   await syncInstagramMessages(account, brand.workspaceId);
   await syncInstagramAccountStats(account);
+  await syncInstagramAudienceDemographics(account);
 
   await prisma.socialAccount.update({
     where: { id: account.id },
@@ -66,6 +68,40 @@ async function syncInstagramAccountStats(account: SocialAccountModel) {
       followersCount: stats.followersCount,
       followingCount: stats.followingCount,
       mediaCount: stats.mediaCount,
+    },
+  });
+}
+
+async function syncInstagramAudienceDemographics(account: SocialAccountModel) {
+  const demographics = await getInstagramAudienceDemographics(account.oauthAccessToken!).catch(
+    () => null
+  );
+  if (!demographics) return;
+
+  // Below the 100-follower threshold Meta just returns empty breakdowns for
+  // everything - skip writing a row rather than overwriting real data with blanks.
+  const hasAnyData =
+    demographics.gender.length > 0 ||
+    demographics.age.length > 0 ||
+    demographics.country.length > 0 ||
+    demographics.city.length > 0;
+  if (!hasAnyData) return;
+
+  await prisma.audienceDemographic.upsert({
+    where: { socialAccountId: account.id },
+    update: {
+      genderData: demographics.gender,
+      ageData: demographics.age,
+      countryData: demographics.country,
+      cityData: demographics.city,
+      capturedAt: new Date(),
+    },
+    create: {
+      socialAccountId: account.id,
+      genderData: demographics.gender,
+      ageData: demographics.age,
+      countryData: demographics.country,
+      cityData: demographics.city,
     },
   });
 }
