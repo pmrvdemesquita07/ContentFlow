@@ -65,6 +65,38 @@ export async function getInstagramProfile(accessToken: string) {
   return res.json() as Promise<{ user_id: string; username: string }>;
 }
 
+export type InstagramAccountStats = {
+  followersCount: number;
+  followingCount: number;
+  mediaCount: number;
+  profilePictureUrl: string | null;
+};
+
+export async function getInstagramAccountStats(
+  accessToken: string
+): Promise<InstagramAccountStats> {
+  const params = new URLSearchParams({
+    fields: "followers_count,follows_count,media_count,profile_picture_url",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${IG_GRAPH_URL}/me?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Instagram account stats fetch failed: ${await res.text()}`);
+  }
+  const json = (await res.json()) as {
+    followers_count?: number;
+    follows_count?: number;
+    media_count?: number;
+    profile_picture_url?: string;
+  };
+  return {
+    followersCount: json.followers_count ?? 0,
+    followingCount: json.follows_count ?? 0,
+    mediaCount: json.media_count ?? 0,
+    profilePictureUrl: json.profile_picture_url ?? null,
+  };
+}
+
 export type InstagramMedia = {
   id: string;
   caption?: string;
