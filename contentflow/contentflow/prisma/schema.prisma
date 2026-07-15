@@ -237,22 +237,44 @@ model Metric {
 }
 
 model SocialAccount {
-  id                String              @id @default(uuid())
-  brandId           String
-  platform          SocialPlatform
-  oauthAccessToken  String?
-  oauthRefreshToken String?
-  status            SocialAccountStatus @default(disconnected)
-  connectedAt       DateTime?
-  externalAccountId String?
-  externalUsername  String?
-  tokenExpiresAt    DateTime?
-  lastSyncedAt      DateTime?
+  id                 String              @id @default(uuid())
+  brandId            String
+  platform           SocialPlatform
+  oauthAccessToken   String?
+  oauthRefreshToken  String?
+  status             SocialAccountStatus @default(disconnected)
+  connectedAt        DateTime?
+  externalAccountId  String?
+  externalUsername   String?
+  tokenExpiresAt     DateTime?
+  lastSyncedAt       DateTime?
+  /// Cached from the latest sync - the account snapshots below hold history.
+  followersCount     Int?
+  followingCount     Int?
+  mediaCount         Int?
+  profilePictureUrl  String?
 
-  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brand     Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  snapshots AccountSnapshot[]
 
   @@unique([brandId, platform])
   @@map("social_accounts")
+}
+
+/// Follower/following counts over time, one row per sync - powers the
+/// follower growth chart without needing to re-derive it from Metric rows.
+model AccountSnapshot {
+  id              String   @id @default(uuid())
+  socialAccountId String
+  followersCount  Int
+  followingCount  Int
+  mediaCount      Int
+  capturedAt      DateTime @default(now())
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@index([socialAccountId, capturedAt])
+  @@map("account_snapshots")
 }
 
 /// contentId is optional (a DM isn't always about one post), but every
