@@ -1,9 +1,13 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getAnalyticsData } from "@/lib/analytics";
+import { DASHBOARD_RANGES, type DashboardRange } from "@/lib/dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart } from "@/components/charts/bar-chart";
+import { GrowthBadge } from "@/components/analytics/growth-badge";
+import { cn } from "@/lib/utils";
 
 const STAT_LABELS = [
   { key: "likes", label: "Likes" },
@@ -22,22 +26,59 @@ const TYPE_LABELS: Record<string, string> = {
   story: "Story",
 };
 
-export default async function AnalyticsPage() {
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range } = await searchParams;
+  const activeRange: DashboardRange =
+    range && range in DASHBOARD_RANGES ? (range as DashboardRange) : "30d";
+
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
 
-  const { totals, byCampaign, byType, perPost, hasAnyMetrics } = await getAnalyticsData(
-    ctx.brand.id
-  );
+  const {
+    totals,
+    growth,
+    byCampaign,
+    byType,
+    perPost,
+    hasAnyMetrics,
+    followerTotals,
+    followerGrowth,
+    hasAnyAccounts,
+  } = await getAnalyticsData(ctx.brand.id, activeRange);
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Analytics</h1>
-        <p className="text-sm text-muted-foreground">
-          Real performance only - nothing here is estimated.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Analytics</h1>
+          <p className="text-sm text-muted-foreground">
+            Real performance only - nothing here is estimated. Growth compares now vs the start
+            of the selected period.
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {(Object.entries(DASHBOARD_RANGES) as [DashboardRange, { label: string }][]).map(
+            ([key, { label }]) => (
+              <Link
+                key={key}
+                href={`/analytics?range=${key}`}
+                className={cn(
+                  "rounded-md px-2.5 py-1.5 text-sm font-medium",
+                  activeRange === key
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {label}
+              </Link>
+            )
+          )}
+        </div>
       </div>
 
       {!hasAnyMetrics ? (
@@ -51,12 +92,40 @@ export default async function AnalyticsPage() {
         </Card>
       ) : (
         <>
+          {hasAnyAccounts && (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
+              <Card>
+                <CardContent className="pt-5">
+                  <p className="text-xs text-muted-foreground">Followers</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-semibold">
+                      {followerTotals.followers.toLocaleString()}
+                    </p>
+                    <GrowthBadge value={followerGrowth.followers} />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-5">
+                  <p className="text-xs text-muted-foreground">Following</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-semibold">
+                      {followerTotals.following.toLocaleString()}
+                    </p>
+                    <GrowthBadge value={followerGrowth.following} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {STAT_LABELS.map(({ key, label }) => (
               <Card key={key}>
                 <CardContent className="pt-5">
                   <p className="text-xs text-muted-foreground">{label}</p>
                   <p className="text-2xl font-semibold">{totals[key].toLocaleString()}</p>
+                  <GrowthBadge value={growth[key]} />
                 </CardContent>
               </Card>
             ))}
