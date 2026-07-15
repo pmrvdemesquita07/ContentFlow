@@ -15,7 +15,14 @@ const STAT_LABELS = [
   { key: "saved", label: "Saved" },
   { key: "shares", label: "Shares" },
   { key: "reach", label: "Reach" },
+  { key: "impressions", label: "Impressions" },
   { key: "videoViews", label: "Video views" },
+] as const;
+
+const STORY_STAT_LABELS = [
+  { key: "replies", label: "Replies" },
+  { key: "exits", label: "Exits" },
+  { key: "tapsForward", label: "Taps forward" },
 ] as const;
 
 const TYPE_LABELS: Record<string, string> = {
@@ -25,6 +32,10 @@ const TYPE_LABELS: Record<string, string> = {
   video: "Video",
   story: "Story",
 };
+
+function formatRate(value: number | null) {
+  return value !== null ? `${value.toFixed(1)}%` : "-";
+}
 
 export default async function AnalyticsPage({
   searchParams,
@@ -49,7 +60,10 @@ export default async function AnalyticsPage({
     followerTotals,
     followerGrowth,
     hasAnyAccounts,
+    engagementRates,
   } = await getAnalyticsData(ctx.brand.id, activeRange);
+
+  const hasStoryMetrics = totals.replies + totals.exits + totals.tapsForward > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -119,7 +133,7 @@ export default async function AnalyticsPage({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
             {STAT_LABELS.map(({ key, label }) => (
               <Card key={key}>
                 <CardContent className="pt-5">
@@ -129,6 +143,42 @@ export default async function AnalyticsPage({
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {hasStoryMetrics && (
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Story metrics (only apply to Stories)
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {STORY_STAT_LABELS.map(({ key, label }) => (
+                  <Card key={key}>
+                    <CardContent className="pt-5">
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      <p className="text-2xl font-semibold">{totals[key].toLocaleString()}</p>
+                      <GrowthBadge value={growth[key]} />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="pt-5">
+                <p className="text-xs text-muted-foreground">Engagement rate (by followers)</p>
+                <p className="text-2xl font-semibold">
+                  {formatRate(engagementRates.byFollowers)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-5">
+                <p className="text-xs text-muted-foreground">Engagement rate (by views)</p>
+                <p className="text-2xl font-semibold">{formatRate(engagementRates.byViews)}</p>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -148,7 +198,7 @@ export default async function AnalyticsPage({
                   items={byType
                     .map((row) => ({
                       label: TYPE_LABELS[row.type] ?? row.type,
-                      value: row.likes + row.comments + row.shares + row.saved,
+                      value: row.likes + row.comments + row.shares + row.saved + row.replies,
                     }))
                     .sort((a, b) => b.value - a.value)}
                 />
@@ -167,7 +217,9 @@ export default async function AnalyticsPage({
                   >
                     <span>{row.campaignId === "uncategorized" ? "No campaign" : row.campaignId}</span>
                     <span className="text-muted-foreground">
-                      {row.likes + row.comments + row.shares} interactions - {row.reach} reach
+                      {row.likes + row.comments + row.shares + row.saved + row.replies}{" "}
+                      interactions -{" "}
+                      {row.reach} reach
                     </span>
                   </div>
                 ))}
@@ -207,14 +259,24 @@ export default async function AnalyticsPage({
                         {TYPE_LABELS[post.type] ?? post.type}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-5 gap-4 text-right text-xs text-muted-foreground">
+                    <div className="flex max-w-md flex-wrap justify-end gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span>{post.likes.toLocaleString()} likes</span>
                       <span>{post.comments.toLocaleString()} comments</span>
                       <span>{post.saved.toLocaleString()} saved</span>
                       <span>{post.reach.toLocaleString()} reach</span>
-                      <span>
-                        {post.videoViews > 0 ? `${post.videoViews.toLocaleString()} views` : "-"}
-                      </span>
+                      <span>{post.impressions.toLocaleString()} impressions</span>
+                      {post.videoViews > 0 && (
+                        <span>{post.videoViews.toLocaleString()} views</span>
+                      )}
+                      {post.type === "story" && (
+                        <>
+                          <span>{post.replies.toLocaleString()} replies</span>
+                          <span>{post.exits.toLocaleString()} exits</span>
+                          <span>{post.tapsForward.toLocaleString()} taps forward</span>
+                        </>
+                      )}
+                      <span>{formatRate(post.engagementRateByFollowers)} eng/followers</span>
+                      <span>{formatRate(post.engagementRateByViews)} eng/views</span>
                     </div>
                   </a>
                 ))}
