@@ -110,7 +110,7 @@ async function syncInstagramPosts(
       item.id,
       item.media_product_type,
       account.oauthAccessToken!
-    ).catch(() => ({ reach: 0, saved: 0, videoViews: 0 }));
+    ).catch(() => ({ reach: 0, saved: 0, videoViews: 0, impressions: 0 }));
 
     await prisma.metric.create({
       data: {
@@ -122,6 +122,7 @@ async function syncInstagramPosts(
         reach: insights.reach,
         saved: insights.saved,
         videoViews: insights.videoViews,
+        impressions: insights.impressions,
       },
     });
   }
@@ -157,22 +158,24 @@ async function syncInstagramStories(
       },
     });
 
-    // Stories don't support likes/saves in the API - only reach and DM replies.
-    const insights = await getInstagramStoryInsights(
-      story.id,
-      account.oauthAccessToken!
-    ).catch(() => ({ reach: 0, replies: 0 }));
+    // Stories don't support likes/saves in the API - only these navigation/reply metrics.
+    const insights = await getInstagramStoryInsights(story.id, account.oauthAccessToken!).catch(
+      () => ({ reach: 0, replies: 0, exits: 0, tapsForward: 0 })
+    );
 
     await prisma.metric.create({
       data: {
         contentId: content.id,
         platform: "instagram",
         likes: 0,
-        comments: insights.replies,
+        comments: 0,
         shares: 0,
         reach: insights.reach,
         saved: 0,
         videoViews: 0,
+        replies: insights.replies,
+        exits: insights.exits,
+        tapsForward: insights.tapsForward,
       },
     });
   }
