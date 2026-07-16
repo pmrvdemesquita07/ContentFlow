@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PLATFORM_OPTIONS, STATUS_OPTIONS, TYPE_OPTIONS } from "./options";
 import { TaskList } from "./task-list";
 import { MediaSection } from "./media-section";
+import { ContentMetrics } from "./content-metrics";
 
 export function ContentDetailDialog({
   content,
@@ -49,16 +50,21 @@ export function ContentDetailDialog({
       <button type="button" onClick={() => setOpen(true)} className="text-left">
         {children}
       </button>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{content.title}</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="details">
+        <Tabs defaultValue="metrics">
           <TabsList className="w-full">
+            <TabsTrigger value="metrics">Metrics</TabsTrigger>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tasks">Tasks{content.tasks.length > 0 && ` (${content.tasks.length})`}</TabsTrigger>
             <TabsTrigger value="media">Media{content.media.length > 0 && ` (${content.media.length})`}</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="metrics">
+            <ContentMetrics content={content} />
+          </TabsContent>
 
           <TabsContent value="details">
             <form action={formAction} className="flex flex-col gap-4">
