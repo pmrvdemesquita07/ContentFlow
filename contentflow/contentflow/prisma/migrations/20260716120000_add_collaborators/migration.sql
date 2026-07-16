@@ -1,0 +1,1 @@
+ALTER TABLE "content" ADD COLUMN "collaborators" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
