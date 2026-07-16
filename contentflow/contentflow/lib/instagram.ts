@@ -278,6 +278,31 @@ export async function getInstagramMediaLocation(
   return json.location?.name ?? null;
 }
 
+/**
+ * Best-effort: collab (co-authored) posts are a real Instagram feature, but
+ * the exact field name for reading collaborators back via this API isn't
+ * confirmed against a live response yet - unlike `location`, which was
+ * verified this way already. Same isolated-fetch, never-throws shape as
+ * `getInstagramMediaLocation` so a wrong/unsupported field name just yields
+ * an empty list instead of breaking sync. Treat this as unverified until
+ * checked against real API responses/errors.
+ */
+export async function getInstagramMediaCollaborators(
+  mediaId: string,
+  accessToken: string
+): Promise<string[]> {
+  const params = new URLSearchParams({ fields: "collaborators", access_token: accessToken });
+  const res = await fetch(`${IG_GRAPH_URL}/${mediaId}?${params.toString()}`);
+  if (!res.ok) return [];
+  const json = (await res.json()) as {
+    collaborators?: { data?: ({ username?: string } | string)[] };
+  };
+  const data = json.collaborators?.data ?? [];
+  return data
+    .map((entry) => (typeof entry === "string" ? entry : entry.username))
+    .filter((username): username is string => Boolean(username));
+}
+
 export type AudienceBreakdown = { label: string; value: number }[];
 
 export type InstagramAudienceDemographics = {
