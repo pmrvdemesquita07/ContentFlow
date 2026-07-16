@@ -1,9 +1,12 @@
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getSocialHubData } from "@/lib/social";
-import { Card, CardContent } from "@/components/ui/card";
+import { getCommentsForBrand, getMentionsFromComments } from "@/lib/comments";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MessageCircle, AtSign } from "lucide-react";
+import { CommentRow } from "@/components/social/comment-row";
 import { DisconnectButton } from "./disconnect-button";
 import { SyncButton } from "./sync-button";
 import type { SocialPlatform } from "@/lib/generated/prisma/enums";
@@ -38,6 +41,11 @@ export default async function SocialHubPage({
   const { accounts, platformTotals, totals } = await getSocialHubData(ctx.brand.id);
   const accountsByPlatform = new Map(accounts.map((a) => [a.platform, a]));
   const platformTotalsByPlatform = new Map(platformTotals.map((p) => [p.platform, p]));
+
+  const [comments, mentions] = await Promise.all([
+    getCommentsForBrand(ctx.brand.id),
+    getMentionsFromComments(ctx.brand.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,6 +149,61 @@ export default async function SocialHubPage({
           );
         })}
       </div>
+
+      {accounts.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MessageCircle className="size-4 text-primary" />
+                Comments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {comments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No comments synced yet - they&apos;ll show up here after the next sync.
+                </p>
+              ) : (
+                <div className="flex flex-col divide-y">
+                  {comments.map((comment) => (
+                    <CommentRow key={comment.id} comment={comment} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AtSign className="size-4 text-primary" />
+                Mentions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Instagram doesn&apos;t expose who reposted your content - this shows real @handles
+                people use inside comments on your posts instead.
+              </p>
+              {mentions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No mentions found in comments yet.</p>
+              ) : (
+                <ul className="flex flex-col divide-y">
+                  {mentions.map((m) => (
+                    <li key={m.handle} className="flex items-center justify-between py-2 text-sm">
+                      <span className="font-medium">@{m.handle}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {m.count} mention{m.count !== 1 ? "s" : ""} - last by @{m.lastBy}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
