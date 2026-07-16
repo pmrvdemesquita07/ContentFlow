@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import {
   getInstagramMedia,
   getInstagramMediaInsights,
+  getInstagramMediaLocation,
   getInstagramConversations,
   getInstagramAccountStats,
   getInstagramStories,
@@ -18,6 +19,14 @@ function mapInstagramContentType(media: InstagramMedia): ContentType {
   if (media.media_type === "VIDEO") return "video";
   if (media.media_type === "CAROUSEL_ALBUM") return "carousel";
   return "post";
+}
+
+/** Instagram doesn't expose a structured mentions list via this API, so
+ * @handles are parsed straight out of the caption text instead. */
+function parseMentions(caption: string | null | undefined): string[] {
+  if (!caption) return [];
+  const matches = caption.matchAll(/@([a-zA-Z0-9._]+)/g);
+  return [...new Set([...matches].map((m) => m[1]))];
 }
 
 export async function syncInstagramAccount(account: SocialAccountModel) {
@@ -118,6 +127,10 @@ async function syncInstagramPosts(
     // Instagram's CDN links expire after a while, so the thumbnail is
     // refreshed on every sync rather than only set once on first import.
     const thumbnailUrl = item.thumbnail_url ?? item.media_url ?? null;
+    const mentions = parseMentions(item.caption);
+    const locationName = await getInstagramMediaLocation(item.id, account.oauthAccessToken!).catch(
+      () => null
+    );
     const content = await prisma.content.upsert({
       where: { brandId_externalId: { brandId: account.brandId, externalId: item.id } },
       update: {
@@ -125,6 +138,8 @@ async function syncInstagramPosts(
         body: item.caption ?? null,
         externalUrl: item.permalink ?? null,
         thumbnailUrl,
+        mentions,
+        locationName,
       },
       create: {
         workspaceId,
@@ -139,6 +154,8 @@ async function syncInstagramPosts(
         externalId: item.id,
         externalUrl: item.permalink ?? null,
         thumbnailUrl,
+        mentions,
+        locationName,
       },
     });
 
@@ -173,11 +190,17 @@ async function syncInstagramStories(
 
   for (const story of stories) {
     const thumbnailUrl = story.thumbnail_url ?? story.media_url ?? null;
+    // Stories don't expose caption text via this API (mentions are visual
+    // stickers, not text), so only location is available here, not mentions.
+    const locationName = await getInstagramMediaLocation(story.id, account.oauthAccessToken!).catch(
+      () => null
+    );
     const content = await prisma.content.upsert({
       where: { brandId_externalId: { brandId: account.brandId, externalId: story.id } },
       update: {
         externalUrl: story.permalink ?? null,
         thumbnailUrl,
+        locationName,
       },
       create: {
         workspaceId,
@@ -191,6 +214,7 @@ async function syncInstagramStories(
         externalId: story.id,
         externalUrl: story.permalink ?? null,
         thumbnailUrl,
+        locationName,
       },
     });
 
