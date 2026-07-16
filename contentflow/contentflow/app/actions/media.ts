@@ -42,7 +42,11 @@ export async function uploadMedia(
   });
   if (!content) return { error: "Content not found." };
 
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : undefined;
+  // The browser can't submit a File whose name has non-Latin-1 characters
+  // (throws a ByteString conversion error), so the client renames it before
+  // upload and sends the real name separately in this field.
+  const fileName = String(formData.get("originalName") ?? "").trim() || file.name;
+  const ext = fileName.includes(".") ? fileName.split(".").pop() : undefined;
   const path = `${content.workspaceId}/${contentId}/${randomUUID()}${ext ? `.${ext}` : ""}`;
 
   const supabase = createAdminClient();
@@ -60,7 +64,7 @@ export async function uploadMedia(
       brandId: content.brandId,
       contentId,
       fileUrl: publicUrlData.publicUrl,
-      fileName: file.name,
+      fileName,
       type: file.type || "application/octet-stream",
     },
   });
@@ -93,7 +97,9 @@ export async function uploadCampaignFile(
   });
   if (!campaign) return { error: "Campaign not found." };
 
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : undefined;
+  // Same non-Latin-1 filename workaround as uploadMedia above.
+  const fileName = String(formData.get("originalName") ?? "").trim() || file.name;
+  const ext = fileName.includes(".") ? fileName.split(".").pop() : undefined;
   const path = `${campaign.workspaceId}/campaigns/${campaignId}/${randomUUID()}${ext ? `.${ext}` : ""}`;
 
   const supabase = createAdminClient();
@@ -111,7 +117,7 @@ export async function uploadCampaignFile(
       brandId: campaign.brandId,
       campaignId,
       fileUrl: publicUrlData.publicUrl,
-      fileName: file.name,
+      fileName,
       type: file.type || "application/octet-stream",
     },
   });
