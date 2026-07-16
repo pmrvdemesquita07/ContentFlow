@@ -161,6 +161,7 @@ model Campaign {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
   content   Content[]
+  media     Media[]
 
   @@index([brandId])
   @@map("campaigns")
@@ -210,6 +211,10 @@ model Content {
   /// The location tag on the post/story, when the author set one - null
   /// when no location was attached.
   locationName String?
+  /// Usernames of co-authors on a Collab post. Empty when it's a solo post -
+  /// but also empty if this Graph API field turns out unsupported, so this
+  /// can't yet be read as a confirmed "not a collab" for every account.
+  collaborators String[] @default([])
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -250,18 +255,25 @@ model Task {
   @@map("tasks")
 }
 
+/// contentId and campaignId are both optional and mutually exclusive in
+/// practice - a file attaches to a specific post, or to a campaign as a
+/// briefing doc, but workspaceId/brandId are always required directly
+/// (same pattern as Task/Message) for tenant scoping either way.
 model Media {
   id          String   @id @default(uuid())
   workspaceId String
   brandId     String
   contentId   String?
+  campaignId  String?
   fileUrl     String
+  fileName    String?
   type        String
   uploadedAt  DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
   content   Content?  @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@map("media")
 }
