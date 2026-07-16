@@ -2,11 +2,13 @@
 
 import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
-import { createTask, updateTaskStatus, deleteTask } from "@/app/actions/tasks";
+import { createTask, updateTaskStatus, updateTaskPriority, deleteTask } from "@/app/actions/tasks";
 import type { ContentWithRelations } from "@/lib/types";
+import type { TaskPriority } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PriorityBadge } from "@/components/tasks/priority-badge";
 
 export function TaskList({ content }: { content: ContentWithRelations }) {
   const createForContent = createTask.bind(null, content.id);
@@ -38,6 +40,17 @@ export function TaskList({ content }: { content: ContentWithRelations }) {
               >
                 {task.title}
               </span>
+              <PriorityBadge priority={task.priority} />
+              <select
+                value={task.priority}
+                onChange={(e) => updateTaskPriority(task.id, e.target.value as TaskPriority)}
+                className="h-6 rounded border border-input bg-transparent px-1 text-xs outline-none"
+                aria-label="Priority"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
               {task.dueDate && (
                 <span className="text-xs text-muted-foreground">
                   {new Date(task.dueDate).toLocaleDateString()}
@@ -60,6 +73,16 @@ export function TaskList({ content }: { content: ContentWithRelations }) {
         <div className="flex flex-1 flex-col gap-1.5">
           <Input name="title" placeholder="Add a task…" required />
         </div>
+        <select
+          name="priority"
+          defaultValue="medium"
+          className="h-9 rounded-md border border-input bg-transparent px-2 text-sm outline-none"
+          aria-label="Priority"
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
         <Input name="dueDate" type="date" className="w-36" />
         <Button type="submit" size="sm" disabled={pending}>
           Add
