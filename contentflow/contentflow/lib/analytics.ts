@@ -59,6 +59,7 @@ export async function getAnalyticsData(brandId: string, range: ResolvedRange) {
             id: true,
             title: true,
             campaignId: true,
+            campaign: { select: { name: true } },
             type: true,
             thumbnailUrl: true,
             externalUrl: true,
@@ -116,11 +117,15 @@ export async function getAnalyticsData(brandId: string, range: ResolvedRange) {
     tapsForward: growthPercent(totals.tapsForward, previousTotals.tapsForward),
   };
 
-  const byCampaign = new Map<string, { campaignId: string } & Totals>();
+  const byCampaign = new Map<string, { campaignId: string; campaignName: string | null } & Totals>();
   const byType = new Map<ContentType, Totals>();
   for (const m of inRange) {
     const campaignKey = m.content.campaignId ?? "uncategorized";
-    const campaignRow = byCampaign.get(campaignKey) ?? { campaignId: campaignKey, ...EMPTY_TOTALS };
+    const campaignRow = byCampaign.get(campaignKey) ?? {
+      campaignId: campaignKey,
+      campaignName: m.content.campaign?.name ?? null,
+      ...EMPTY_TOTALS,
+    };
     addMetric(campaignRow, m);
     byCampaign.set(campaignKey, campaignRow);
 
