@@ -108,6 +108,7 @@ model Workspace {
   media     Media[]
   messages  Message[]
   campaigns Campaign[]
+  tasks     Task[]
 
   @@map("workspaces")
 }
@@ -139,6 +140,7 @@ model Brand {
   messages      Message[]
   socialAccounts SocialAccount[]
   campaigns     Campaign[]
+  tasks         Task[]
 
   @@map("brands")
 }
@@ -225,18 +227,25 @@ model Content {
   @@map("content")
 }
 
+/// contentId is optional - a task is a reminder first, only sometimes tied
+/// to a specific post, so workspaceId/brandId are required directly (same
+/// pattern as Message/Media) rather than derived through content.
 model Task {
-  id         String       @id @default(uuid())
-  contentId  String
-  title      String
-  dueDate    DateTime?
-  status     TaskStatus   @default(todo)
-  priority   TaskPriority @default(medium)
-  assigneeId String?      @db.Uuid
-  createdAt  DateTime     @default(now())
+  id          String       @id @default(uuid())
+  workspaceId String
+  brandId     String
+  contentId   String?
+  title       String
+  dueDate     DateTime?
+  status      TaskStatus   @default(todo)
+  priority    TaskPriority @default(medium)
+  assigneeId  String?      @db.Uuid
+  createdAt   DateTime     @default(now())
 
-  content  Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  assignee User?   @relation(fields: [assigneeId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  content   Content?  @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  assignee  User?     @relation(fields: [assigneeId], references: [id])
 
   @@map("tasks")
 }
