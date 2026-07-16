@@ -11,7 +11,7 @@ export function getTasksForContent(contentId: string) {
  * multiple brands shouldn't mix their tasks together. */
 export function getTasksForBrand(brandId: string) {
   return prisma.task.findMany({
-    where: { content: { brandId } },
+    where: { brandId },
     include: { content: { select: { id: true, title: true } } },
     orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
   });
