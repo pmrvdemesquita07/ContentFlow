@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, type ChangeEvent } from "react";
+import { useActionState, startTransition, type FormEvent } from "react";
 import { Trash2, FileIcon } from "lucide-react";
 import { uploadMedia, deleteMedia } from "@/app/actions/media";
 import type { ContentWithRelations } from "@/lib/types";
@@ -11,18 +11,23 @@ import { isAsciiSafe, asciiSafeFileName } from "@/lib/sanitize-filename";
 export function MediaSection({ content }: { content: ContentWithRelations }) {
   const uploadForContent = uploadMedia.bind(null, content.id);
   const [state, formAction, pending] = useActionState(uploadForContent, undefined);
-  const [originalName, setOriginalName] = useState("");
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  // Builds the FormData by hand instead of relying on native form
+  // submission - some browsers don't honor programmatically reassigning
+  // input.files, so the rename-for-transport step below has to happen on a
+  // FormData we control rather than by mutating the file input itself.
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const input = e.currentTarget.elements.namedItem("file") as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
-    setOriginalName(file.name);
-    if (!isAsciiSafe(file.name)) {
-      const renamed = new File([file], asciiSafeFileName(file.name), { type: file.type });
-      const transfer = new DataTransfer();
-      transfer.items.add(renamed);
-      e.target.files = transfer.files;
-    }
+    const safeFile = isAsciiSafe(file.name)
+      ? file
+      : new File([file], asciiSafeFileName(file.name), { type: file.type });
+    const data = new FormData();
+    data.append("file", safeFile);
+    data.append("originalName", file.name);
+    startTransition(() => formAction(data));
   }
 
   return (
@@ -57,9 +62,8 @@ export function MediaSection({ content }: { content: ContentWithRelations }) {
         </div>
       )}
 
-      <form action={formAction} className="flex items-end gap-2 border-t pt-3">
-        <input type="hidden" name="originalName" value={originalName} />
-        <Input name="file" type="file" required className="flex-1" onChange={handleFileChange} />
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t pt-3">
+        <Input name="file" type="file" required className="flex-1" />
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? "Uploading…" : "Upload"}
         </Button>
