@@ -297,7 +297,13 @@ export default async function AnalyticsPage({
                     key={row.campaignId}
                     className="flex items-center justify-between py-2 text-sm"
                   >
-                    <span>{row.campaignId === "uncategorized" ? "No campaign" : row.campaignId}</span>
+                    {row.campaignId === "uncategorized" ? (
+                      <span>No campaign</span>
+                    ) : (
+                      <a href={`/campaigns/${row.campaignId}`} className="hover:underline">
+                        {row.campaignName ?? row.campaignId}
+                      </a>
+                    )}
                     <span className="text-muted-foreground">
                       {row.likes + row.comments + row.shares + row.saved + row.replies}{" "}
                       interactions -{" "}
