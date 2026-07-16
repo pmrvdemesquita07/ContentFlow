@@ -1,7 +1,9 @@
+import { MapPin } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getAnalyticsData } from "@/lib/analytics";
 import { getBrandAudienceDemographics } from "@/lib/demographics";
+import { getTopMentions } from "@/lib/mentions";
 import { resolveDateRange } from "@/lib/dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +65,7 @@ export default async function AnalyticsPage({
   } = await getAnalyticsData(ctx.brand.id, resolvedRange);
 
   const demographics = await getBrandAudienceDemographics(ctx.brand.id);
+  const topMentions = await getTopMentions(ctx.brand.id);
 
   const hasStoryMetrics = totals.replies + totals.exits + totals.tapsForward > 0;
   const percentFormatter = (v: number) => `${v.toFixed(0)}%`;
@@ -83,6 +86,8 @@ export default async function AnalyticsPage({
       "Interactions",
       "Engagement rate (followers) %",
       "Engagement rate (views) %",
+      "Location",
+      "Mentions",
     ],
     perPost.map((p) => [
       p.title,
@@ -99,6 +104,8 @@ export default async function AnalyticsPage({
       p.interactions,
       p.engagementRateByFollowers?.toFixed(1) ?? "",
       p.engagementRateByViews?.toFixed(1) ?? "",
+      p.locationName ?? "",
+      p.mentions.map((m) => `@${m}`).join(" "),
     ])
   );
 
@@ -315,6 +322,41 @@ export default async function AnalyticsPage({
             </CardContent>
           </Card>
 
+          {topMentions.length > 0 && (
+            <Card>
+              <CardContent className="pt-5">
+                <h2 className="mb-3 text-sm font-semibold">Top mentions</h2>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Accounts mentioned in your captions - pages or other creators - ranked by how
+                  often they&apos;re tagged.
+                </p>
+                <div className="flex flex-col divide-y">
+                  {topMentions.slice(0, 10).map((row) => (
+                    <div
+                      key={row.handle}
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 text-sm"
+                    >
+                      <a
+                        href={`https://instagram.com/${row.handle}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium hover:underline"
+                      >
+                        @{row.handle}
+                      </a>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span>{row.mentionCount} mentions</span>
+                        <span>{row.likes.toLocaleString()} likes</span>
+                        <span>{row.comments.toLocaleString()} comments</span>
+                        <span>{formatRate(row.engagementRate)} eng. rate</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="pt-5">
               <h2 className="mb-3 text-sm font-semibold">All posts</h2>
@@ -343,9 +385,22 @@ export default async function AnalyticsPage({
                     )}
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <p className="truncate text-sm font-medium">{post.title}</p>
-                      <Badge variant="outline" className="w-fit capitalize">
-                        {TYPE_LABELS[post.type] ?? post.type}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant="outline" className="w-fit capitalize">
+                          {TYPE_LABELS[post.type] ?? post.type}
+                        </Badge>
+                        {post.locationName && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="size-3" />
+                            {post.locationName}
+                          </span>
+                        )}
+                        {post.mentions.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {post.mentions.map((m) => `@${m}`).join(" ")}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex max-w-md flex-wrap justify-end gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span>{post.likes.toLocaleString()} likes</span>
