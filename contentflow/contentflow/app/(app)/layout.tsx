@@ -22,7 +22,6 @@ import { BrandSwitcher } from "@/components/workspace/brand-switcher";
 
 const ACTIVE_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/ideas", label: "Ideas Bank", icon: Lightbulb },
   { href: "/posts", label: "Posts", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/tasks", label: "Tasks", icon: SquareCheck },
@@ -34,7 +33,10 @@ const ACTIVE_LINKS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-const SOON_LINKS = [{ label: "Assistants", icon: Sparkles }];
+const SOON_LINKS = [
+  { label: "Ideas Bank", icon: Lightbulb },
+  { label: "Assistants", icon: Sparkles },
+];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
