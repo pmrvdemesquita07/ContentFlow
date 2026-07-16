@@ -47,6 +47,7 @@ export async function getCampaignDetail(campaignId: string, brandId: string) {
         include: { metrics: { orderBy: { capturedAt: "desc" }, take: 1 } },
         orderBy: { updatedAt: "desc" },
       },
+      media: { orderBy: { uploadedAt: "desc" } },
     },
   });
   if (!campaign) return null;
@@ -89,6 +90,7 @@ export async function getCampaignDetail(campaignId: string, brandId: string) {
     endDate: campaign.endDate,
     posts,
     totals,
+    files: campaign.media,
   };
 }
 
