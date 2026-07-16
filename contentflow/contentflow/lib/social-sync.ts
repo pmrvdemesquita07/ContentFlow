@@ -3,6 +3,7 @@ import {
   getInstagramMedia,
   getInstagramMediaInsights,
   getInstagramMediaLocation,
+  getInstagramMediaCollaborators,
   getInstagramConversations,
   getInstagramAccountStats,
   getInstagramStories,
@@ -10,6 +11,7 @@ import {
   getInstagramAudienceDemographics,
   type InstagramMedia,
 } from "@/lib/instagram";
+import { parseMentions } from "@/lib/text-parse";
 import type { SocialAccountModel } from "@/lib/generated/prisma/models";
 import type { ContentType } from "@/lib/generated/prisma/enums";
 
@@ -19,14 +21,6 @@ function mapInstagramContentType(media: InstagramMedia): ContentType {
   if (media.media_type === "VIDEO") return "video";
   if (media.media_type === "CAROUSEL_ALBUM") return "carousel";
   return "post";
-}
-
-/** Instagram doesn't expose a structured mentions list via this API, so
- * @handles are parsed straight out of the caption text instead. */
-function parseMentions(caption: string | null | undefined): string[] {
-  if (!caption) return [];
-  const matches = caption.matchAll(/@([a-zA-Z0-9._]+)/g);
-  return [...new Set([...matches].map((m) => m[1]))];
 }
 
 export async function syncInstagramAccount(account: SocialAccountModel) {
@@ -47,9 +41,16 @@ export async function syncInstagramAccount(account: SocialAccountModel) {
 
   await syncInstagramPosts(account, brand.workspaceId, owner.userId);
   await syncInstagramStories(account, brand.workspaceId, owner.userId);
-  await syncInstagramMessages(account, brand.workspaceId);
   await syncInstagramAccountStats(account);
   await syncInstagramAudienceDemographics(account);
+
+  // Runs last and never throws past this point - conversations require a
+  // permission (instagram_business_manage_messages) that isn't guaranteed to
+  // be granted/approved, and a failure here shouldn't cost the account its
+  // stats/demographics sync, which already succeeded above.
+  await syncInstagramMessages(account, brand.workspaceId).catch((error) => {
+    console.error(`Instagram messages sync failed for account ${account.id}:`, error);
+  });
 
   await prisma.socialAccount.update({
     where: { id: account.id },
@@ -131,6 +132,10 @@ async function syncInstagramPosts(
     const locationName = await getInstagramMediaLocation(item.id, account.oauthAccessToken!).catch(
       () => null
     );
+    const collaborators = await getInstagramMediaCollaborators(
+      item.id,
+      account.oauthAccessToken!
+    ).catch(() => []);
     const content = await prisma.content.upsert({
       where: { brandId_externalId: { brandId: account.brandId, externalId: item.id } },
       update: {
@@ -140,6 +145,7 @@ async function syncInstagramPosts(
         thumbnailUrl,
         mentions,
         locationName,
+        collaborators,
       },
       create: {
         workspaceId,
@@ -156,6 +162,7 @@ async function syncInstagramPosts(
         thumbnailUrl,
         mentions,
         locationName,
+        collaborators,
       },
     });
 
