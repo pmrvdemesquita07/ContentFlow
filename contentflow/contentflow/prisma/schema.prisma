@@ -99,6 +99,7 @@ model Workspace {
   content   Content[]
   media     Media[]
   messages  Message[]
+  campaigns Campaign[]
 
   @@map("workspaces")
 }
@@ -129,8 +130,30 @@ model Brand {
   media         Media[]
   messages      Message[]
   socialAccounts SocialAccount[]
+  campaigns     Campaign[]
 
   @@map("brands")
+}
+
+/// A group of content to plan and measure together (a launch, a seasonal
+/// push, a partnership) - Content.campaignId points here instead of being a
+/// free-text label, so totals can't drift from typos across posts.
+model Campaign {
+  id          String    @id @default(uuid())
+  workspaceId String
+  brandId     String
+  name        String
+  description String?   @db.Text
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  content   Content[]
+
+  @@index([brandId])
+  @@map("campaigns")
 }
 
 model BrandVoice {
@@ -174,6 +197,7 @@ model Content {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
   author    User      @relation(fields: [createdBy], references: [id])
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   tasks     Task[]
   media     Media[]
   metrics   Metric[]
