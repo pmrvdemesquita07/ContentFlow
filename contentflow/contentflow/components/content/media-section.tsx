@@ -1,15 +1,29 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, type ChangeEvent } from "react";
 import { Trash2, FileIcon } from "lucide-react";
 import { uploadMedia, deleteMedia } from "@/app/actions/media";
 import type { ContentWithRelations } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isAsciiSafe, asciiSafeFileName } from "@/lib/sanitize-filename";
 
 export function MediaSection({ content }: { content: ContentWithRelations }) {
   const uploadForContent = uploadMedia.bind(null, content.id);
   const [state, formAction, pending] = useActionState(uploadForContent, undefined);
+  const [originalName, setOriginalName] = useState("");
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setOriginalName(file.name);
+    if (!isAsciiSafe(file.name)) {
+      const renamed = new File([file], asciiSafeFileName(file.name), { type: file.type });
+      const transfer = new DataTransfer();
+      transfer.items.add(renamed);
+      e.target.files = transfer.files;
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -44,7 +58,8 @@ export function MediaSection({ content }: { content: ContentWithRelations }) {
       )}
 
       <form action={formAction} className="flex items-end gap-2 border-t pt-3">
-        <Input name="file" type="file" required className="flex-1" />
+        <input type="hidden" name="originalName" value={originalName} />
+        <Input name="file" type="file" required className="flex-1" onChange={handleFileChange} />
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? "Uploading…" : "Upload"}
         </Button>
