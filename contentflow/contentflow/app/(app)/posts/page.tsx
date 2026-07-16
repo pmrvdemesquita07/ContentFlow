@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getContentByStatuses } from "@/lib/content";
@@ -91,6 +92,17 @@ export default async function PostsPage({
                           {p}
                         </Badge>
                       ))}
+                      {post.locationName && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="size-3" />
+                          {post.locationName}
+                        </span>
+                      )}
+                      {post.mentions.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {post.mentions.map((m) => `@${m}`).join(" ")}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
