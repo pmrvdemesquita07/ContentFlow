@@ -260,6 +260,24 @@ export async function getInstagramMediaInsights(
   };
 }
 
+/**
+ * Fetched as its own request rather than bundled into the main media/story
+ * fields query - a location tag isn't present on most posts, and if this
+ * field name turns out invalid for some media type, we don't want that to
+ * take down the entire media fetch (which already reliably returns
+ * likes/comments/captions) the way an invalid insights metric name does.
+ */
+export async function getInstagramMediaLocation(
+  mediaId: string,
+  accessToken: string
+): Promise<string | null> {
+  const params = new URLSearchParams({ fields: "location", access_token: accessToken });
+  const res = await fetch(`${IG_GRAPH_URL}/${mediaId}?${params.toString()}`);
+  if (!res.ok) return null;
+  const json = (await res.json()) as { location?: { name?: string } };
+  return json.location?.name ?? null;
+}
+
 export type AudienceBreakdown = { label: string; value: number }[];
 
 export type InstagramAudienceDemographics = {
