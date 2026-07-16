@@ -59,6 +59,14 @@ enum TaskStatus {
   done
 }
 
+/// Declared low-to-high so `orderBy: { priority: "desc" }` sorts high first -
+/// Postgres native enums compare by declaration order.
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
 enum MessageStatus {
   unread
   read
@@ -218,13 +226,14 @@ model Content {
 }
 
 model Task {
-  id         String     @id @default(uuid())
+  id         String       @id @default(uuid())
   contentId  String
   title      String
   dueDate    DateTime?
-  status     TaskStatus @default(todo)
-  assigneeId String?    @db.Uuid
-  createdAt  DateTime   @default(now())
+  status     TaskStatus   @default(todo)
+  priority   TaskPriority @default(medium)
+  assigneeId String?      @db.Uuid
+  createdAt  DateTime     @default(now())
 
   content  Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
   assignee User?   @relation(fields: [assigneeId], references: [id])
