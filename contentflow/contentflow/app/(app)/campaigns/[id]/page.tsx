@@ -8,6 +8,7 @@ import { EditCampaignForm } from "./edit-campaign-form";
 import { DeleteCampaignButton } from "./delete-campaign-button";
 import { AssignContentForm } from "./assign-content-form";
 import { RemoveContentButton } from "./remove-content-button";
+import { CampaignFiles } from "./campaign-files";
 
 const TYPE_LABELS: Record<string, string> = {
   post: "Post",
@@ -119,6 +120,16 @@ export default async function CampaignDetailPage({
         <CardContent className="pt-5">
           <h2 className="mb-3 text-sm font-semibold">Add a post to this campaign</h2>
           <AssignContentForm campaignId={campaign.id} unassigned={unassigned} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-lg">
+        <CardContent className="pt-5">
+          <h2 className="mb-3 text-sm font-semibold">Briefing files</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            PDFs, Word, Excel, PowerPoint - anything the team needs for this campaign.
+          </p>
+          <CampaignFiles campaignId={campaign.id} files={campaign.files} />
         </CardContent>
       </Card>
 
