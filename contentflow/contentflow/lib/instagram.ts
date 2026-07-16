@@ -395,3 +395,44 @@ export async function getInstagramConversations(accessToken: string) {
   const json = (await res.json()) as { data: InstagramConversation[] };
   return json.data;
 }
+
+export type InstagramComment = {
+  id: string;
+  text?: string;
+  username?: string;
+  timestamp?: string;
+};
+
+/** Top-level comments on a post/reel/story - requires instagram_business_manage_comments. */
+export async function getInstagramComments(
+  mediaId: string,
+  accessToken: string
+): Promise<InstagramComment[]> {
+  const params = new URLSearchParams({
+    fields: "id,text,username,timestamp",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${IG_GRAPH_URL}/${mediaId}/comments?${params.toString()}`);
+  if (!res.ok) {
+    console.error(`Instagram comments fetch failed for ${mediaId}: ${res.status} ${await res.text()}`);
+    return [];
+  }
+  const json = (await res.json()) as { data?: InstagramComment[] };
+  return json.data ?? [];
+}
+
+/** Posts a real reply to a comment via the platform's own reply API - shows
+ * up threaded under the original comment on Instagram itself. */
+export async function replyToInstagramComment(
+  commentId: string,
+  message: string,
+  accessToken: string
+): Promise<void> {
+  const params = new URLSearchParams({ message, access_token: accessToken });
+  const res = await fetch(`${IG_GRAPH_URL}/${commentId}/replies?${params.toString()}`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(`Instagram comment reply failed: ${await res.text()}`);
+  }
+}
