@@ -7,10 +7,12 @@ export function getTasksForContent(contentId: string) {
   });
 }
 
-export function getTasksForWorkspace(workspaceId: string) {
+/** Scoped to the current brand, not the whole workspace - a workspace with
+ * multiple brands shouldn't mix their tasks together. */
+export function getTasksForBrand(brandId: string) {
   return prisma.task.findMany({
-    where: { content: { workspaceId } },
+    where: { content: { brandId } },
     include: { content: { select: { id: true, title: true } } },
-    orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+    orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
   });
 }
