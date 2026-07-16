@@ -4,6 +4,7 @@ import {
   getInstagramMediaInsights,
   getInstagramMediaLocation,
   getInstagramMediaCollaborators,
+  getInstagramComments,
   getInstagramConversations,
   getInstagramAccountStats,
   getInstagramStories,
@@ -183,6 +184,43 @@ async function syncInstagramPosts(
         saved: insights.saved,
         videoViews: insights.videoViews,
         impressions: insights.impressions,
+      },
+    });
+
+    await syncInstagramCommentsForContent(
+      content.id,
+      item.id,
+      workspaceId,
+      account.brandId,
+      account.oauthAccessToken!
+    ).catch((error) => {
+      console.error(`Instagram comments sync failed for content ${content.id}:`, error);
+    });
+  }
+}
+
+async function syncInstagramCommentsForContent(
+  contentId: string,
+  mediaId: string,
+  workspaceId: string,
+  brandId: string,
+  accessToken: string
+) {
+  const comments = await getInstagramComments(mediaId, accessToken);
+  for (const comment of comments) {
+    if (!comment.text || !comment.id) continue;
+    await prisma.comment.upsert({
+      where: { brandId_externalId: { brandId, externalId: comment.id } },
+      update: { body: comment.text },
+      create: {
+        workspaceId,
+        brandId,
+        contentId,
+        platform: "instagram",
+        authorUsername: comment.username ?? "Instagram user",
+        body: comment.text,
+        publishedAt: comment.timestamp ? new Date(comment.timestamp) : new Date(),
+        externalId: comment.id,
       },
     });
   }
