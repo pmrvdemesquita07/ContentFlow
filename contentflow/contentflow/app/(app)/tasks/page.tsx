@@ -1,23 +1,29 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
-import { getTasksForWorkspace } from "@/lib/tasks";
+import { getTasksForBrand } from "@/lib/tasks";
+import { PriorityLegend } from "@/components/tasks/priority-badge";
 import { TaskRow } from "./task-row";
 
 export default async function TasksPage() {
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
-  if (!ctx) return null;
+  if (!ctx?.brand) return null;
 
-  const tasks = await getTasksForWorkspace(ctx.workspace.id);
+  const tasks = await getTasksForBrand(ctx.brand.id);
+  const todoTasks = tasks.filter((t) => t.status !== "done");
+  const doneTasks = tasks.filter((t) => t.status === "done");
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Tasks</h1>
-        <p className="text-sm text-muted-foreground">
-          Every task across every piece of content, in one list.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Tasks</h1>
+          <p className="text-sm text-muted-foreground">
+            Reminders across every piece of content. Check one off and it moves to Check -
+            uncheck it to bring it back.
+          </p>
+        </div>
+        <PriorityLegend />
       </div>
 
       {tasks.length === 0 ? (
@@ -25,18 +31,36 @@ export default async function TasksPage() {
           No tasks yet. Add one from any content item&apos;s Tasks tab.
         </p>
       ) : (
-        <div className="flex flex-col divide-y rounded-lg border">
-          {tasks.map((task) => (
-            <div key={task.id} className="flex items-center gap-3 px-4 py-3">
-              <TaskRow task={task} />
-              <Link
-                href={`/posts`}
-                className="ml-auto shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline"
-              >
-                {task.content.title}
-              </Link>
-            </div>
-          ))}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              To Do <span className="text-xs font-normal">({todoTasks.length})</span>
+            </h2>
+            {todoTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing to do - nice.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {todoTasks.map((task) => (
+                  <TaskRow key={task.id} task={task} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              Check <span className="text-xs font-normal">({doneTasks.length})</span>
+            </h2>
+            {doneTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing checked off yet.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {doneTasks.map((task) => (
+                  <TaskRow key={task.id} task={task} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
