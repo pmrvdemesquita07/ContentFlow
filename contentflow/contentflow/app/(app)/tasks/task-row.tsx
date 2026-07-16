@@ -18,7 +18,7 @@ type TaskWithContent = {
   status: string;
   priority: TaskPriority;
   dueDate: Date | null;
-  content: { id: string; title: string };
+  content: { id: string; title: string } | null;
 };
 
 export function TaskRow({ task }: { task: TaskWithContent }) {
@@ -38,12 +38,14 @@ export function TaskRow({ task }: { task: TaskWithContent }) {
           <span className={isDone ? "text-sm text-muted-foreground line-through" : "text-sm"}>
             {task.title}
           </span>
-          <Link
-            href="/posts"
-            className="w-fit text-xs text-muted-foreground hover:text-foreground hover:underline"
-          >
-            {task.content.title}
-          </Link>
+          {task.content && (
+            <Link
+              href="/posts"
+              className="w-fit text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {task.content.title}
+            </Link>
+          )}
         </div>
         <button
           type="button"
