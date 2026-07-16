@@ -107,6 +107,7 @@ model Workspace {
   content   Content[]
   media     Media[]
   messages  Message[]
+  comments  Comment[]
   campaigns Campaign[]
   tasks     Task[]
 
@@ -138,6 +139,7 @@ model Brand {
   content       Content[]
   media         Media[]
   messages      Message[]
+  comments      Comment[]
   socialAccounts SocialAccount[]
   campaigns     Campaign[]
   tasks         Task[]
@@ -224,6 +226,7 @@ model Content {
   media     Media[]
   metrics   Metric[]
   messages  Message[]
+  comments  Comment[]
 
   @@unique([brandId, externalId])
   @@index([workspaceId, status])
@@ -386,6 +389,34 @@ model Message {
   @@unique([brandId, externalId])
   @@index([workspaceId, status])
   @@map("messages")
+}
+
+/// A real comment on a post/reel/story, synced from the platform. Replying
+/// here calls the platform's actual reply API - it isn't a local-only note.
+model Comment {
+  id             String        @id @default(uuid())
+  workspaceId    String
+  brandId        String
+  contentId      String
+  platform       SocialPlatform
+  authorUsername String
+  body           String        @db.Text
+  publishedAt    DateTime
+  status         MessageStatus @default(unread)
+  /// What we actually sent back via the platform's reply API, once replied.
+  replyText      String?       @db.Text
+  repliedAt      DateTime?
+  /// The platform's comment id, so re-syncing doesn't create duplicates and
+  /// replies can be posted against the right comment.
+  externalId     String
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  content   Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, externalId])
+  @@index([workspaceId, status])
+  @@map("comments")
 }
 
 model AssistantLog {
