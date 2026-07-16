@@ -19,6 +19,7 @@ import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { BrandSwitcher } from "@/components/workspace/brand-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const ACTIVE_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -79,11 +80,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           ))}
         </nav>
-        <form action={signOut}>
-          <Button type="submit" variant="ghost" size="sm" className="w-full justify-start">
-            Sign out
-          </Button>
-        </form>
+        <div className="flex items-center gap-1">
+          <form action={signOut} className="flex-1">
+            <Button type="submit" variant="ghost" size="sm" className="w-full justify-start">
+              Sign out
+            </Button>
+          </form>
+          <ThemeToggle />
+        </div>
       </aside>
       <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>
