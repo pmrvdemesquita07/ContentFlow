@@ -12,6 +12,7 @@ import {
   Image,
   Inbox,
   Settings,
+  Megaphone,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
@@ -25,6 +26,7 @@ const ACTIVE_LINKS = [
   { href: "/posts", label: "Posts", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/tasks", label: "Tasks", icon: SquareCheck },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/media", label: "Media", icon: Image },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/mailbox", label: "Mailbox", icon: Inbox },
