@@ -193,6 +193,13 @@ model Content {
   /// Refreshed on every sync - the platform's CDN link expires after a
   /// while, so this only stays valid as long as syncing keeps happening.
   thumbnailUrl String?
+  /// @usernames parsed out of the caption - pages or other creators tagged
+  /// in the post. Instagram doesn't expose a structured mentions list via
+  /// this API, so this is extracted from the caption text at sync time.
+  mentions     String[] @default([])
+  /// The location tag on the post/story, when the author set one - null
+  /// when no location was attached.
+  locationName String?
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
