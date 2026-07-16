@@ -23,9 +23,11 @@ export function MediaSection({ content }: { content: ContentWithRelations }) {
                 // eslint-disable-next-line @next/next/no-img-element -- arbitrary external Storage URL
                 <img src={item.fileUrl} alt="" className="aspect-square w-full object-cover" />
               ) : (
-                <div className="flex aspect-square w-full flex-col items-center justify-center gap-1 bg-muted text-muted-foreground">
+                <div className="flex aspect-square w-full flex-col items-center justify-center gap-1 bg-muted p-1 text-center text-muted-foreground">
                   <FileIcon className="size-6" />
-                  <span className="text-[10px]">{item.type}</span>
+                  <span className="line-clamp-2 text-[10px] break-all">
+                    {item.fileName ?? item.type}
+                  </span>
                 </div>
               )}
               <button
