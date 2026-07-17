@@ -107,20 +107,23 @@ model User {
 }
 
 model Workspace {
-  id        String            @id @default(uuid())
-  name      String
-  plan      Plan              @default(starter)
-  type      WorkspaceType     @default(brand)
-  createdAt DateTime          @default(now())
-  members   WorkspaceMember[]
-  brands    Brand[]
-  content   Content[]
-  media     Media[]
-  messages  Message[]
-  comments  Comment[]
-  campaigns Campaign[]
-  tasks     Task[]
-  creators  Creator[]
+  id         String            @id @default(uuid())
+  name       String
+  plan       Plan              @default(starter)
+  type       WorkspaceType     @default(brand)
+  createdAt  DateTime          @default(now())
+  /// Set when the workspace is archived (hidden but not deleted) - null
+  /// means active. Archiving is reversible; deleting the workspace is not.
+  archivedAt DateTime?
+  members    WorkspaceMember[]
+  brands     Brand[]
+  content    Content[]
+  media      Media[]
+  messages   Message[]
+  comments   Comment[]
+  campaigns  Campaign[]
+  tasks      Task[]
+  creators   Creator[]
 
   @@map("workspaces")
 }
