@@ -31,7 +31,6 @@ const ACTIVE_LINKS = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/tasks", label: "Tasks", icon: SquareCheck },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/creators", label: "Creators", icon: Users },
   { href: "/media", label: "Media", icon: Image },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/mailbox", label: "Mailbox", icon: Inbox },
@@ -39,6 +38,7 @@ const ACTIVE_LINKS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const CREATORS_LINK = { href: "/creators", label: "Creators", icon: Users };
 const AGENCY_LINK = { href: "/agency", label: "Agency roster", icon: Building2 };
 
 const SOON_LINKS = [
@@ -52,7 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!ctx) redirect("/onboarding");
 
-  const searchIndex = await getSearchIndex(ctx.workspace.id);
+  const searchIndex = await getSearchIndex(ctx.workspace.id, ctx.workspace.type);
 
   return (
     <div className="flex min-h-screen">
@@ -79,6 +79,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {link.label}
             </Link>
           ))}
+          {ctx.workspace.type !== "creator" && (
+            <Link
+              href={CREATORS_LINK.href}
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              <CREATORS_LINK.icon className="size-4 text-muted-foreground" />
+              {CREATORS_LINK.label}
+            </Link>
+          )}
           {ctx.workspace.type === "agency" && (
             <Link
               href={AGENCY_LINK.href}
