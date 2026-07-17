@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { BRAND_COOKIE } from "@/lib/workspace";
+import type { WorkspaceType } from "@/lib/generated/prisma/enums";
+
+const ACCOUNT_TYPES: WorkspaceType[] = ["agency", "brand", "creator"];
 
 export async function switchBrand(brandId: string) {
   const user = await requireUser();
@@ -50,6 +53,10 @@ export async function createWorkspace(
   const user = await requireUser();
   const workspaceName = String(formData.get("workspaceName") ?? "").trim();
   const brandName = String(formData.get("brandName") ?? "").trim();
+  const accountTypeRaw = String(formData.get("accountType") ?? "");
+  const accountType: WorkspaceType = ACCOUNT_TYPES.includes(accountTypeRaw as WorkspaceType)
+    ? (accountTypeRaw as WorkspaceType)
+    : "brand";
 
   if (!workspaceName || !brandName) {
     return { error: "Both a workspace name and a brand name are required." };
@@ -58,6 +65,7 @@ export async function createWorkspace(
   const workspace = await prisma.workspace.create({
     data: {
       name: workspaceName,
+      type: accountType,
       members: { create: { userId: user.id, role: "owner" } },
       brands: { create: { name: brandName } },
     },
