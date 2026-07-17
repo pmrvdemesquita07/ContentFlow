@@ -23,6 +23,15 @@ enum MemberRole {
   viewer
 }
 
+/// What kind of organization this workspace represents - agencies get an
+/// extra roster view aggregating their brands; brand and creator keep
+/// today's single-brand experience.
+enum WorkspaceType {
+  brand
+  agency
+  creator
+}
+
 enum ContentType {
   post
   story
@@ -101,6 +110,7 @@ model Workspace {
   id        String            @id @default(uuid())
   name      String
   plan      Plan              @default(starter)
+  type      WorkspaceType     @default(brand)
   createdAt DateTime          @default(now())
   members   WorkspaceMember[]
   brands    Brand[]
@@ -110,6 +120,7 @@ model Workspace {
   comments  Comment[]
   campaigns Campaign[]
   tasks     Task[]
+  creators  Creator[]
 
   @@map("workspaces")
 }
@@ -164,9 +175,44 @@ model Campaign {
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
   content   Content[]
   media     Media[]
+  creators  CampaignCreator[]
 
   @@index([brandId])
   @@map("campaigns")
+}
+
+/// A contact record for an influencer/content creator working on campaigns -
+/// not a ContentFlow login, just the roster info an agency or brand needs
+/// (name, how to reach them, their own social handles).
+model Creator {
+  id              String   @id @default(uuid())
+  workspaceId     String
+  name            String
+  contactEmail    String?
+  contactPhone    String?
+  instagramHandle String?
+  tiktokHandle    String?
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns CampaignCreator[]
+
+  @@index([workspaceId])
+  @@map("creators")
+}
+
+model CampaignCreator {
+  id         String   @id @default(uuid())
+  campaignId String
+  creatorId  String
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorId])
+  @@map("campaign_creators")
 }
 
 model BrandVoice {
