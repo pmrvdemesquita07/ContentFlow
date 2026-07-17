@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import type { WorkspaceType } from "@/lib/generated/prisma/enums";
+
+const ACCOUNT_TYPES: WorkspaceType[] = ["agency", "brand", "creator"];
 
 export async function createWorkspaceAndBrand(
   _prevState: { error?: string } | undefined,
@@ -12,6 +15,10 @@ export async function createWorkspaceAndBrand(
 
   const workspaceName = String(formData.get("workspaceName") ?? "").trim();
   const brandName = String(formData.get("brandName") ?? "").trim();
+  const accountTypeRaw = String(formData.get("accountType") ?? "");
+  const accountType: WorkspaceType = ACCOUNT_TYPES.includes(accountTypeRaw as WorkspaceType)
+    ? (accountTypeRaw as WorkspaceType)
+    : "brand";
 
   if (!workspaceName || !brandName) {
     return { error: "Both a workspace name and a brand name are required." };
@@ -29,6 +36,7 @@ export async function createWorkspaceAndBrand(
   await prisma.workspace.create({
     data: {
       name: workspaceName,
+      type: accountType,
       members: { create: { userId: user.id, role: "owner" } },
       brands: { create: { name: brandName } },
     },
