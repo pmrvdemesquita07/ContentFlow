@@ -5,7 +5,7 @@ export const BRAND_COOKIE = "cf_brand_id";
 
 export async function getUserWorkspaces(userId: string) {
   const memberships = await prisma.workspaceMember.findMany({
-    where: { userId },
+    where: { userId, workspace: { archivedAt: null } },
     orderBy: { createdAt: "asc" },
     include: {
       workspace: {
@@ -14,6 +14,15 @@ export async function getUserWorkspaces(userId: string) {
         },
       },
     },
+  });
+  return memberships.map((m) => m.workspace);
+}
+
+export async function getArchivedWorkspaces(userId: string) {
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId, workspace: { archivedAt: { not: null } } },
+    orderBy: { createdAt: "asc" },
+    include: { workspace: true },
   });
   return memberships.map((m) => m.workspace);
 }
