@@ -77,3 +77,32 @@ export async function createWorkspace(
   revalidatePath("/", "layout");
   return { error: undefined };
 }
+
+async function requireMembership(userId: string, workspaceId: string) {
+  const membership = await prisma.workspaceMember.findFirst({ where: { userId, workspaceId } });
+  if (!membership) throw new Error("You don't have access to that workspace.");
+}
+
+export async function archiveWorkspace(workspaceId: string) {
+  const user = await requireUser();
+  await requireMembership(user.id, workspaceId);
+  await prisma.workspace.update({ where: { id: workspaceId }, data: { archivedAt: new Date() } });
+  revalidatePath("/brands");
+  revalidatePath("/", "layout");
+}
+
+export async function restoreWorkspace(workspaceId: string) {
+  const user = await requireUser();
+  await requireMembership(user.id, workspaceId);
+  await prisma.workspace.update({ where: { id: workspaceId }, data: { archivedAt: null } });
+  revalidatePath("/brands");
+  revalidatePath("/", "layout");
+}
+
+export async function deleteWorkspace(workspaceId: string) {
+  const user = await requireUser();
+  await requireMembership(user.id, workspaceId);
+  await prisma.workspace.delete({ where: { id: workspaceId } });
+  revalidatePath("/brands");
+  revalidatePath("/", "layout");
+}
