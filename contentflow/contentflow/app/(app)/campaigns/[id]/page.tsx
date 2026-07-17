@@ -36,10 +36,13 @@ export default async function CampaignDetailPage({
   if (!campaign) notFound();
 
   const unassigned = await getUnassignedContent(ctx.brand.id);
-  const [campaignCreators, unassignedCreators] = await Promise.all([
-    getCreatorsForCampaign(campaign.id),
-    getUnassignedCreators(ctx.workspace.id, campaign.id),
-  ]);
+  const showCreators = ctx.workspace.type !== "creator";
+  const [campaignCreators, unassignedCreators] = showCreators
+    ? await Promise.all([
+        getCreatorsForCampaign(campaign.id),
+        getUnassignedCreators(ctx.workspace.id, campaign.id),
+      ])
+    : [[], []];
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,37 +133,39 @@ export default async function CampaignDetailPage({
         </CardContent>
       </Card>
 
-      <Card className="max-w-lg">
-        <CardContent className="pt-5">
-          <h2 className="mb-3 text-sm font-semibold">Creators on this campaign</h2>
-          {campaignCreators.length === 0 ? (
-            <p className="mb-3 text-sm text-muted-foreground">
-              No creators added yet - add one from your{" "}
-              <a href="/creators" className="underline">
-                roster
-              </a>{" "}
-              or below.
-            </p>
-          ) : (
-            <div className="mb-3 flex flex-col divide-y">
-              {campaignCreators.map((cc) => (
-                <div key={cc.creator.id} className="flex items-center justify-between py-2">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{cc.creator.name}</span>
-                    {cc.creator.instagramHandle && (
-                      <span className="text-xs text-muted-foreground">
-                        @{cc.creator.instagramHandle}
-                      </span>
-                    )}
+      {showCreators && (
+        <Card className="max-w-lg">
+          <CardContent className="pt-5">
+            <h2 className="mb-3 text-sm font-semibold">Creators on this campaign</h2>
+            {campaignCreators.length === 0 ? (
+              <p className="mb-3 text-sm text-muted-foreground">
+                No creators added yet - add one from your{" "}
+                <a href="/creators" className="underline">
+                  roster
+                </a>{" "}
+                or below.
+              </p>
+            ) : (
+              <div className="mb-3 flex flex-col divide-y">
+                {campaignCreators.map((cc) => (
+                  <div key={cc.creator.id} className="flex items-center justify-between py-2">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{cc.creator.name}</span>
+                      {cc.creator.instagramHandle && (
+                        <span className="text-xs text-muted-foreground">
+                          @{cc.creator.instagramHandle}
+                        </span>
+                      )}
+                    </div>
+                    <RemoveCreatorButton creatorId={cc.creator.id} campaignId={campaign.id} />
                   </div>
-                  <RemoveCreatorButton creatorId={cc.creator.id} campaignId={campaign.id} />
-                </div>
-              ))}
-            </div>
-          )}
-          <AssignCreatorForm campaignId={campaign.id} unassigned={unassignedCreators} />
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+            <AssignCreatorForm campaignId={campaign.id} unassigned={unassignedCreators} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="max-w-lg">
         <CardContent className="pt-5">
