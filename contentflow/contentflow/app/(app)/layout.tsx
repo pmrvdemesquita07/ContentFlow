@@ -13,13 +13,17 @@ import {
   Inbox,
   Settings,
   Megaphone,
+  Building2,
+  Users,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { getSearchIndex } from "@/lib/search";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { BrandSwitcher } from "@/components/workspace/brand-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CommandSearch } from "@/components/search/command-search";
 
 const ACTIVE_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -27,12 +31,15 @@ const ACTIVE_LINKS = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/tasks", label: "Tasks", icon: SquareCheck },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/creators", label: "Creators", icon: Users },
   { href: "/media", label: "Media", icon: Image },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/mailbox", label: "Mailbox", icon: Inbox },
   { href: "/social-hub", label: "Social Hub", icon: Share2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+const AGENCY_LINK = { href: "/agency", label: "Agency roster", icon: Building2 };
 
 const SOON_LINKS = [
   { label: "Ideas Bank", icon: Lightbulb },
@@ -45,16 +52,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!ctx) redirect("/onboarding");
 
+  const searchIndex = await getSearchIndex(ctx.workspace.id);
+
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-60 shrink-0 flex-col border-r bg-muted/30 p-4">
-        <div className="mb-6">
+        <div className="mb-3">
           <BrandSwitcher
             workspaces={ctx.workspaces}
             currentWorkspaceName={ctx.workspace.name}
             currentBrandId={ctx.brand?.id}
             currentBrandName={ctx.brand?.name}
           />
+        </div>
+        <div className="mb-6">
+          <CommandSearch index={searchIndex} />
         </div>
         <nav className="flex flex-1 flex-col gap-0.5">
           {ACTIVE_LINKS.map((link) => (
@@ -67,6 +79,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {link.label}
             </Link>
           ))}
+          {ctx.workspace.type === "agency" && (
+            <Link
+              href={AGENCY_LINK.href}
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              <AGENCY_LINK.icon className="size-4 text-muted-foreground" />
+              {AGENCY_LINK.label}
+            </Link>
+          )}
           <div className="mt-4 mb-1 px-2.5 text-xs font-medium text-muted-foreground">
             Coming soon
           </div>
