@@ -4,14 +4,25 @@ import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getAnalyticsData } from "@/lib/analytics";
 import { getBrandAudienceDemographics } from "@/lib/demographics";
 import { getTopMentions } from "@/lib/mentions";
+import { getSocialAccountsForBrand } from "@/lib/social";
 import { resolveDateRange } from "@/lib/dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart } from "@/components/charts/bar-chart";
 import { GrowthBadge } from "@/components/analytics/growth-badge";
 import { DateRangePicker } from "@/components/analytics/date-range-picker";
+import { AccountSwitcher } from "@/components/analytics/account-switcher";
 import { ExportCsvButton } from "@/components/analytics/export-csv-button";
 import { toCsv } from "@/lib/csv";
+import type { SocialPlatform } from "@/lib/generated/prisma/enums";
+
+const PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  x: "X",
+  youtube: "YouTube",
+  linkedin: "LinkedIn",
+};
 
 const STAT_LABELS = [
   { key: "likes", label: "Likes" },
@@ -43,13 +54,19 @@ function formatRate(value: number | null) {
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ range?: string; from?: string; to?: string; account?: string }>;
 }) {
-  const resolvedRange = resolveDateRange(await searchParams);
+  const params = await searchParams;
+  const resolvedRange = resolveDateRange(params);
 
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
+
+  const connectedAccounts = await getSocialAccountsForBrand(ctx.brand.id);
+  const selectedPlatform = connectedAccounts.some((a) => a.platform === params.account)
+    ? (params.account as SocialPlatform)
+    : undefined;
 
   const {
     totals,
@@ -62,7 +79,7 @@ export default async function AnalyticsPage({
     followerGrowth,
     hasAnyAccounts,
     engagementRates,
-  } = await getAnalyticsData(ctx.brand.id, resolvedRange);
+  } = await getAnalyticsData(ctx.brand.id, resolvedRange, selectedPlatform);
 
   const demographics = await getBrandAudienceDemographics(ctx.brand.id);
   const topMentions = await getTopMentions(ctx.brand.id);
@@ -111,7 +128,7 @@ export default async function AnalyticsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
           <p className="text-sm text-muted-foreground">
@@ -119,9 +136,29 @@ export default async function AnalyticsPage({
             {resolvedRange.label}; growth compares against the equivalent previous period.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <DateRangePicker basePath="/analytics" current={resolvedRange} />
-          <ExportCsvButton filename={`analytics-${resolvedRange.key}.csv`} csv={csv} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {connectedAccounts.length > 1 ? (
+            <AccountSwitcher
+              accounts={connectedAccounts.map((a) => ({
+                platform: a.platform,
+                label: PLATFORM_LABELS[a.platform],
+                username: a.externalUsername,
+              }))}
+              current={selectedPlatform}
+              basePath="/analytics"
+              range={resolvedRange}
+            />
+          ) : (
+            <div />
+          )}
+          <div className="flex items-center gap-3">
+            <DateRangePicker
+              basePath="/analytics"
+              current={resolvedRange}
+              extraParams={selectedPlatform ? { account: selectedPlatform } : undefined}
+            />
+            <ExportCsvButton filename={`analytics-${resolvedRange.key}.csv`} csv={csv} />
+          </div>
         </div>
       </div>
 
