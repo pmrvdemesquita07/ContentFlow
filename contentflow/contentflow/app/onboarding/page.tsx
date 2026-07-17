@@ -14,6 +14,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const ACCOUNT_TYPES = [
+  {
+    value: "agency",
+    label: "Agency",
+    description: "Manage multiple client brands from one place.",
+  },
+  {
+    value: "brand",
+    label: "Brand",
+    description: "Run content for your own brand.",
+  },
+  {
+    value: "creator",
+    label: "Content creator",
+    description: "Plan and publish your own content.",
+  },
+] as const;
+
 export default function OnboardingPage() {
   const [state, formAction, pending] = useActionState(createWorkspaceAndBrand, undefined);
 
@@ -29,6 +47,27 @@ export default function OnboardingPage() {
         </CardHeader>
         <form action={formAction}>
           <CardContent className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label>Account type</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {ACCOUNT_TYPES.map((type, i) => (
+                  <label
+                    key={type.value}
+                    className="flex cursor-pointer flex-col gap-0.5 rounded-md border p-2.5 text-center has-[:checked]:border-primary has-[:checked]:bg-accent"
+                  >
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value={type.value}
+                      defaultChecked={i === 1}
+                      className="sr-only"
+                    />
+                    <span className="text-xs font-medium">{type.label}</span>
+                    <span className="text-[10px] text-muted-foreground">{type.description}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="workspaceName">Workspace name</Label>
               <Input
