@@ -1,14 +1,20 @@
 import { requireUser } from "@/lib/auth";
-import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { getCurrentWorkspaceAndBrand, getArchivedWorkspaces } from "@/lib/workspace";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { NewBrandForm } from "./new-brand-form";
 import { NewWorkspaceForm } from "./new-workspace-form";
 import { SwitchBrandButton } from "./switch-brand-button";
+import { ArchiveWorkspaceButton } from "./archive-workspace-button";
+import { RestoreWorkspaceButton } from "./restore-workspace-button";
+import { DeleteWorkspaceDialog } from "./delete-workspace-dialog";
 
 export default async function BrandsPage() {
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
+
+  const archivedWorkspaces = await getArchivedWorkspaces(user.id);
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -23,7 +29,13 @@ export default async function BrandsPage() {
         {ctx.workspaces.map((workspace) => (
           <Card key={workspace.id}>
             <CardContent className="flex flex-col gap-3 pt-5">
-              <h2 className="text-sm font-semibold">{workspace.name}</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold">{workspace.name}</h2>
+                <div className="flex items-center gap-2">
+                  <ArchiveWorkspaceButton workspaceId={workspace.id} />
+                  <DeleteWorkspaceDialog workspaceId={workspace.id} workspaceName={workspace.name} />
+                </div>
+              </div>
               <div className="flex flex-col divide-y">
                 {workspace.brands.map((brand) => (
                   <div key={brand.id} className="flex items-center justify-between py-2">
@@ -48,6 +60,28 @@ export default async function BrandsPage() {
           <NewWorkspaceForm />
         </CardContent>
       </Card>
+
+      {archivedWorkspaces.length > 0 && (
+        <Card>
+          <CardContent className="pt-5">
+            <h2 className="mb-3 text-sm font-semibold">Archived workspaces</h2>
+            <div className="flex flex-col divide-y">
+              {archivedWorkspaces.map((workspace) => (
+                <div key={workspace.id} className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{workspace.name}</span>
+                    <Badge variant="outline">Archived</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RestoreWorkspaceButton workspaceId={workspace.id} />
+                    <DeleteWorkspaceDialog workspaceId={workspace.id} workspaceName={workspace.name} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
