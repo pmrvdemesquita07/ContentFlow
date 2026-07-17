@@ -11,9 +11,11 @@ import { cn } from "@/lib/utils";
 export function DateRangePicker({
   basePath,
   current,
+  extraParams,
 }: {
   basePath: string;
   current: ResolvedRange;
+  extraParams?: Record<string, string>;
 }) {
   const router = useRouter();
   const [showCustom, setShowCustom] = useState(current.key === "custom");
@@ -24,9 +26,15 @@ export function DateRangePicker({
     current.key === "custom" ? current.end.toISOString().slice(0, 10) : ""
   );
 
+  const extra = extraParams
+    ? Object.entries(extraParams)
+        .map(([k, v]) => `&${k}=${encodeURIComponent(v)}`)
+        .join("")
+    : "";
+
   function applyCustom() {
     if (!from || !to) return;
-    router.push(`${basePath}?range=custom&from=${from}&to=${to}`);
+    router.push(`${basePath}?range=custom&from=${from}&to=${to}${extra}`);
   }
 
   return (
@@ -35,7 +43,7 @@ export function DateRangePicker({
         ([key, { label }]) => (
           <Link
             key={key}
-            href={`${basePath}?range=${key}`}
+            href={`${basePath}?range=${key}${extra}`}
             onClick={() => setShowCustom(false)}
             className={cn(
               "rounded-md px-2.5 py-1.5 text-sm font-medium",
