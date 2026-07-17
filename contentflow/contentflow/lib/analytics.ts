@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { ContentType } from "@/lib/generated/prisma/enums";
+import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 import type { ResolvedRange } from "@/lib/date-range";
 
 const EMPTY_TOTALS = {
@@ -47,12 +47,16 @@ function growthPercent(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100;
 }
 
-export async function getAnalyticsData(brandId: string, range: ResolvedRange) {
+export async function getAnalyticsData(
+  brandId: string,
+  range: ResolvedRange,
+  platform?: SocialPlatform
+) {
   const { start, end } = range;
 
   const [metrics, socialAccounts, accountSnapshots] = await Promise.all([
     prisma.metric.findMany({
-      where: { content: { brandId } },
+      where: { content: { brandId }, ...(platform ? { platform } : {}) },
       include: {
         content: {
           select: {
@@ -71,8 +75,10 @@ export async function getAnalyticsData(brandId: string, range: ResolvedRange) {
       },
       orderBy: { capturedAt: "desc" },
     }),
-    prisma.socialAccount.findMany({ where: { brandId } }),
-    prisma.accountSnapshot.findMany({ where: { socialAccount: { brandId } } }),
+    prisma.socialAccount.findMany({ where: { brandId, ...(platform ? { platform } : {}) } }),
+    prisma.accountSnapshot.findMany({
+      where: { socialAccount: { brandId, ...(platform ? { platform } : {}) } },
+    }),
   ]);
 
   // Metric rows are snapshots over time (one per sync), so only the most
