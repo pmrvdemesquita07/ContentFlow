@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCreatorsForWorkspace } from "@/lib/creators";
@@ -11,6 +12,7 @@ export default async function CreatorsPage() {
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
+  if (ctx.workspace.type === "creator") redirect("/dashboard");
 
   const creators = await getCreatorsForWorkspace(ctx.workspace.id);
 
