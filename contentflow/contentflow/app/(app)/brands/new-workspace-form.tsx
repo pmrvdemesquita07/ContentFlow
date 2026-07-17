@@ -6,11 +6,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const ACCOUNT_TYPES = [
+  { value: "agency", label: "Agency" },
+  { value: "brand", label: "Brand" },
+  { value: "creator", label: "Creator" },
+] as const;
+
 export function NewWorkspaceForm() {
   const [state, formAction, pending] = useActionState(createWorkspace, undefined);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label>Account type</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {ACCOUNT_TYPES.map((type, i) => (
+            <label
+              key={type.value}
+              className="flex cursor-pointer items-center justify-center rounded-md border p-2 text-xs font-medium has-[:checked]:border-primary has-[:checked]:bg-accent"
+            >
+              <input
+                type="radio"
+                name="accountType"
+                value={type.value}
+                defaultChecked={i === 1}
+                className="sr-only"
+              />
+              {type.label}
+            </label>
+          ))}
+        </div>
+      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="workspaceName">Workspace name</Label>
         <Input id="workspaceName" name="workspaceName" placeholder="e.g. New Agency Client" required />
