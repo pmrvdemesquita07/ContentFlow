@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCampaignDetail, getUnassignedContent } from "@/lib/campaigns";
+import { getCreatorsForCampaign, getUnassignedCreators } from "@/lib/creators";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EditCampaignForm } from "./edit-campaign-form";
@@ -9,6 +10,8 @@ import { DeleteCampaignButton } from "./delete-campaign-button";
 import { AssignContentForm } from "./assign-content-form";
 import { RemoveContentButton } from "./remove-content-button";
 import { CampaignFiles } from "./campaign-files";
+import { AssignCreatorForm } from "./assign-creator-form";
+import { RemoveCreatorButton } from "./remove-creator-button";
 
 const TYPE_LABELS: Record<string, string> = {
   post: "Post",
@@ -33,6 +36,10 @@ export default async function CampaignDetailPage({
   if (!campaign) notFound();
 
   const unassigned = await getUnassignedContent(ctx.brand.id);
+  const [campaignCreators, unassignedCreators] = await Promise.all([
+    getCreatorsForCampaign(campaign.id),
+    getUnassignedCreators(ctx.workspace.id, campaign.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,6 +127,38 @@ export default async function CampaignDetailPage({
         <CardContent className="pt-5">
           <h2 className="mb-3 text-sm font-semibold">Add a post to this campaign</h2>
           <AssignContentForm campaignId={campaign.id} unassigned={unassigned} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-lg">
+        <CardContent className="pt-5">
+          <h2 className="mb-3 text-sm font-semibold">Creators on this campaign</h2>
+          {campaignCreators.length === 0 ? (
+            <p className="mb-3 text-sm text-muted-foreground">
+              No creators added yet - add one from your{" "}
+              <a href="/creators" className="underline">
+                roster
+              </a>{" "}
+              or below.
+            </p>
+          ) : (
+            <div className="mb-3 flex flex-col divide-y">
+              {campaignCreators.map((cc) => (
+                <div key={cc.creator.id} className="flex items-center justify-between py-2">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{cc.creator.name}</span>
+                    {cc.creator.instagramHandle && (
+                      <span className="text-xs text-muted-foreground">
+                        @{cc.creator.instagramHandle}
+                      </span>
+                    )}
+                  </div>
+                  <RemoveCreatorButton creatorId={cc.creator.id} campaignId={campaign.id} />
+                </div>
+              ))}
+            </div>
+          )}
+          <AssignCreatorForm campaignId={campaign.id} unassigned={unassignedCreators} />
         </CardContent>
       </Card>
 
