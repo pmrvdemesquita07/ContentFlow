@@ -188,7 +188,22 @@ model Campaign {
   description String?   @db.Text
   startDate   DateTime?
   endDate     DateTime?
+  /// Real money spent/allocated on this campaign - creators' fees, ad spend,
+  /// production costs. Optional: ROI numbers only show once this is set,
+  /// since we never fabricate a cost that wasn't actually entered.
+  budget      Decimal?  @db.Decimal(10, 2)
   createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  content   Content[]
+  media     Media[]
+  creators  CampaignCreator[]
+  contracts Contract[]
+
+  @@index([brandId])
+  @@map("campaigns")
+}
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
