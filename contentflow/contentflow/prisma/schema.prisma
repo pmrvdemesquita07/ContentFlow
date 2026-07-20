@@ -130,6 +130,18 @@ model Workspace {
   /// Set when the workspace is archived (hidden but not deleted) - null
   /// means active. Archiving is reversible; deleting the workspace is not.
   archivedAt DateTime?
+  /// Opt-in marketplace visibility for creator-type workspaces - off by
+  /// default. When true, this workspace's discovery fields (and its own
+  /// connected accounts' real, already-synced handle/follower counts) become
+  /// visible to every brand/agency workspace's Discover page. This is the one
+  /// deliberate exception to the per-workspace data isolation everywhere
+  /// else in the app, and only ever exposes what the creator explicitly
+  /// published here plus data they already made public by connecting the
+  /// account - never contracts, payments, or anything else tenant-scoped.
+  discoverable          Boolean  @default(false)
+  discoveryNiche        String?
+  discoveryBio          String?  @db.Text
+  discoveryContactEmail String?
   members   WorkspaceMember[]
   brands    Brand[]
   content   Content[]
