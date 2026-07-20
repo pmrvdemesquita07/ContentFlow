@@ -1,4 +1,4 @@
-# ContentFlow
+# SocialFlow
 
 A content operations platform for creators and small agencies: Ideas Bank, Posts, and
 Calendar are three views over one `Content` table, so nothing gets lost moving between
