@@ -17,12 +17,14 @@ export function EditCampaignForm({
   description,
   startDate,
   endDate,
+  budget,
 }: {
   campaignId: string;
   name: string;
   description: string;
   startDate: Date | null;
   endDate: Date | null;
+  budget: number | null;
 }) {
   const [state, formAction, pending] = useActionState(
     updateCampaign.bind(null, campaignId),
@@ -58,6 +60,18 @@ export function EditCampaignForm({
             defaultValue={toDateInputValue(endDate)}
           />
         </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="edit-budget">Budget (optional)</Label>
+        <Input
+          id="edit-budget"
+          name="budget"
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="e.g. 1000.00"
+          defaultValue={budget ?? ""}
+        />
       </div>
       {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
       <Button type="submit" disabled={pending} className="w-fit">
