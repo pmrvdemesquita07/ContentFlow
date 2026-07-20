@@ -1,9 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCampaignDetail, getUnassignedContent } from "@/lib/campaigns";
 import { getCreatorsForCampaign, getUnassignedCreators } from "@/lib/creators";
 import { getReportsForCampaign } from "@/lib/reports";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EditCampaignForm } from "./edit-campaign-form";
@@ -33,6 +34,7 @@ export default async function CampaignDetailPage({
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const campaign = await getCampaignDetail(id, ctx.brand.id);
   if (!campaign) notFound();
