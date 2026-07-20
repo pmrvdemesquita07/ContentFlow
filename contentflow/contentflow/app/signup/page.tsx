@@ -6,6 +6,7 @@ import { signUp } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/brand/logo";
 import {
   Card,
   CardContent,
@@ -20,7 +21,8 @@ export default function SignupPage() {
 
   if (state?.sent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/40 p-4">
+        <Logo size="lg" />
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-xl">Check your email</CardTitle>
@@ -34,10 +36,11 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/40 p-4">
+      <Logo size="lg" />
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Create your ContentFlow account</CardTitle>
+          <CardTitle className="text-xl">Create your account</CardTitle>
           <CardDescription>Start free - no card required.</CardDescription>
         </CardHeader>
         <form action={formAction}>
