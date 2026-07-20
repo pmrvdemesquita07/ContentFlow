@@ -168,6 +168,7 @@ model Workspace {
   competitors Competitor[]
   opportunities Opportunity[]
   matchesAsCreator Match[] @relation("MatchCreatorWorkspace")
+  reports Report[]
 
   @@map("workspaces")
 }
@@ -228,6 +229,7 @@ model Campaign {
   media     Media[]
   creators  CampaignCreator[]
   contracts Contract[]
+  reports   Report[]
 
   @@index([brandId])
   @@map("campaigns")
@@ -387,6 +389,24 @@ model Match {
   @@index([opportunityId])
   @@index([creatorWorkspaceId])
   @@map("matches")
+}
+
+/// A public, unauthenticated shareable snapshot of a campaign's real
+/// metrics/ROI - the id itself is the unguessable share token (no separate
+/// token field needed, uuid v4 is already opaque). revokedAt lets the
+/// owner kill a link without deleting the underlying campaign data.
+model Report {
+  id          String    @id @default(uuid())
+  campaignId  String
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("reports")
 }
 
 model BrandVoice {
