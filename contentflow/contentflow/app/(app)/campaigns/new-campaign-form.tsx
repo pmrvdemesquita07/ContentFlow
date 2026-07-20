@@ -30,6 +30,10 @@ export function NewCampaignForm() {
           <Input id="endDate" name="endDate" type="date" />
         </div>
       </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="budget">Budget (optional)</Label>
+        <Input id="budget" name="budget" type="number" step="0.01" min="0" placeholder="e.g. 1000.00" />
+      </div>
       {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? "Creating..." : "Create campaign"}
