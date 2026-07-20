@@ -24,6 +24,7 @@ import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getSearchIndex } from "@/lib/search";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/logo";
 import { BrandSwitcher } from "@/components/workspace/brand-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandSearch } from "@/components/search/command-search";
@@ -63,6 +64,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-60 shrink-0 flex-col border-r bg-muted/30 p-4">
+        <Logo size="sm" className="mb-4 block" />
         <div className="mb-3">
           <BrandSwitcher
             workspaces={ctx.workspaces}
