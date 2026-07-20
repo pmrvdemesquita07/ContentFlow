@@ -10,6 +10,13 @@ function parseDate(value: FormDataEntryValue | null) {
   return str ? new Date(str) : null;
 }
 
+function parseBudget(value: FormDataEntryValue | null) {
+  const str = String(value ?? "").trim();
+  if (!str) return null;
+  const n = Number(str);
+  return Number.isNaN(n) || n < 0 ? null : n;
+}
+
 export async function createCampaign(
   _prevState: { error?: string } | undefined,
   formData: FormData
@@ -29,6 +36,7 @@ export async function createCampaign(
       description: String(formData.get("description") ?? "").trim() || null,
       startDate: parseDate(formData.get("startDate")),
       endDate: parseDate(formData.get("endDate")),
+      budget: parseBudget(formData.get("budget")),
     },
   });
 
@@ -53,6 +61,7 @@ export async function updateCampaign(
       description: String(formData.get("description") ?? "").trim() || null,
       startDate: parseDate(formData.get("startDate")),
       endDate: parseDate(formData.get("endDate")),
+      budget: parseBudget(formData.get("budget")),
     },
   });
 
