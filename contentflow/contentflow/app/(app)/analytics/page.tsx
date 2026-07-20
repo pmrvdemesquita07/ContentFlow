@@ -51,6 +51,11 @@ function formatRate(value: number | null) {
   return value !== null ? `${value.toFixed(1)}%` : "-";
 }
 
+function mentionProfileUrl(handle: string, platform: SocialPlatform | null) {
+  if (platform === "tiktok") return `https://www.tiktok.com/@${handle}`;
+  return `https://instagram.com/${handle}`;
+}
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
@@ -373,8 +378,8 @@ export default async function AnalyticsPage({
                       key={row.handle}
                       className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 text-sm"
                     >
-                      <a
-                        href={`https://instagram.com/${row.handle}`}
+                                        <a
+                        href={mentionProfileUrl(row.handle, row.platform)}
                         target="_blank"
                         rel="noreferrer"
                         className="font-medium hover:underline"
