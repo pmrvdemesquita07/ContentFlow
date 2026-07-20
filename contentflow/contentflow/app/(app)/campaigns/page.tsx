@@ -50,7 +50,7 @@ export default async function CampaignsPage() {
                   {c.description && (
                     <p className="line-clamp-2 text-sm text-muted-foreground">{c.description}</p>
                   )}
-                  <div className="mt-2 flex gap-4 text-sm">
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm">
                     <span>
                       <span className="font-semibold">{c.contentCount}</span>{" "}
                       <span className="text-muted-foreground">posts</span>
@@ -64,6 +64,13 @@ export default async function CampaignsPage() {
                       <span className="text-muted-foreground">reach</span>
                     </span>
                   </div>
+                  {c.roi && (
+                    <p className="text-xs text-muted-foreground">
+                      {c.roi.costPerInteraction !== null
+                        ? `${c.roi.costPerInteraction.toLocaleString(undefined, { style: "currency", currency: "EUR" })} / interaction`
+                        : `${c.roi.budget.toLocaleString(undefined, { style: "currency", currency: "EUR" })} budget`}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </Link>
