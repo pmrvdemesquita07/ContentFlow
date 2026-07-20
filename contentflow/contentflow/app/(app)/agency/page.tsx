@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getAgencyRoster } from "@/lib/agency";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { SwitchBrandLink } from "./switch-brand-link";
 
@@ -11,6 +12,7 @@ export default async function AgencyPage() {
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
   if (ctx.workspace.type !== "agency") redirect("/dashboard");
+  if (!planAtLeast(ctx.workspace.plan, "studio")) redirect("/settings?upgrade=1");
 
   const roster = await getAgencyRoster(ctx.workspace.id);
 
