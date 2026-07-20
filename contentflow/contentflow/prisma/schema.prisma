@@ -97,6 +97,19 @@ enum PaymentStatus {
   cancelled
 }
 
+enum OpportunityStatus {
+  open
+  closed
+}
+
+enum MatchStatus {
+  applied
+  invited
+  accepted
+  rejected
+  withdrawn
+}
+
 enum AssistantType {
   trends
   comment_reply
@@ -153,6 +166,8 @@ model Workspace {
   creators  Creator[]
   contracts Contract[]
   competitors Competitor[]
+  opportunities Opportunity[]
+  matchesAsCreator Match[] @relation("MatchCreatorWorkspace")
 
   @@map("workspaces")
 }
@@ -329,6 +344,49 @@ model CompetitorSnapshot {
 
   @@index([competitorId, capturedAt])
   @@map("competitor_snapshots")
+}
+
+/// A brief posted by a brand/agency workspace - the other half of
+/// Discover: instead of a brand searching creators, a creator browses
+/// briefs and applies. workspaceId is always a brand/agency workspace.
+model Opportunity {
+  id          String            @id @default(uuid())
+  workspaceId String
+  title       String
+  description String?           @db.Text
+  niche       String?
+  platform    SocialPlatform?
+  budget      Decimal?          @db.Decimal(10, 2)
+  deadline    DateTime?
+  status      OpportunityStatus @default(open)
+  createdAt   DateTime          @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matches   Match[]
+
+  @@index([workspaceId])
+  @@map("opportunities")
+}
+
+/// A creator workspace's application to an Opportunity. No in-app
+/// messaging beyond the initial pitch - once accepted, contact continues
+/// externally, same as Discover.
+model Match {
+  id                 String      @id @default(uuid())
+  opportunityId      String
+  creatorWorkspaceId String
+  status             MatchStatus @default(applied)
+  message            String?     @db.Text
+  createdAt          DateTime    @default(now())
+  respondedAt        DateTime?
+
+  opportunity      Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  creatorWorkspace Workspace   @relation("MatchCreatorWorkspace", fields: [creatorWorkspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, creatorWorkspaceId])
+  @@index([opportunityId])
+  @@index([creatorWorkspaceId])
+  @@map("matches")
 }
 
 model BrandVoice {
