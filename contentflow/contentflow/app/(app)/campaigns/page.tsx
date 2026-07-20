@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCampaignsForBrand } from "@/lib/campaigns";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { NewCampaignForm } from "./new-campaign-form";
 
@@ -17,6 +19,7 @@ export default async function CampaignsPage() {
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const campaigns = await getCampaignsForBrand(ctx.brand.id);
 
