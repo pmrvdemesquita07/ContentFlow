@@ -15,6 +15,7 @@ import {
   Megaphone,
   Building2,
   Users,
+  FileSignature,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
@@ -39,6 +40,7 @@ const ACTIVE_LINKS = [
 ];
 
 const CREATORS_LINK = { href: "/creators", label: "Creators", icon: Users };
+const CONTRACTS_LINK = { href: "/contracts", label: "Contracts", icon: FileSignature };
 const AGENCY_LINK = { href: "/agency", label: "Agency roster", icon: Building2 };
 
 const SOON_LINKS = [
@@ -86,6 +88,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             >
               <CREATORS_LINK.icon className="size-4 text-muted-foreground" />
               {CREATORS_LINK.label}
+            </Link>
+          )}
+          {ctx.workspace.type !== "creator" && (
+            <Link
+              href={CONTRACTS_LINK.href}
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              <CONTRACTS_LINK.icon className="size-4 text-muted-foreground" />
+              {CONTRACTS_LINK.label}
             </Link>
           )}
           {ctx.workspace.type === "agency" && (
