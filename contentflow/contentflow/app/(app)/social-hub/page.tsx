@@ -11,9 +11,9 @@ import { DisconnectButton } from "./disconnect-button";
 import { SyncButton } from "./sync-button";
 import type { SocialPlatform } from "@/lib/generated/prisma/enums";
 
-const PLATFORMS: { key: SocialPlatform; label: string; live: boolean }[] = [
-  { key: "instagram", label: "Instagram", live: true },
-  { key: "tiktok", label: "TikTok", live: false },
+const PLATFORMS: { key: SocialPlatform; label: string; live: boolean; connectPath?: string }[] = [
+  { key: "instagram", label: "Instagram", live: true, connectPath: "/auth/instagram/start" },
+  { key: "tiktok", label: "TikTok", live: true, connectPath: "/auth/tiktok/start" },
   { key: "x", label: "X", live: false },
   { key: "youtube", label: "YouTube", live: false },
   { key: "linkedin", label: "LinkedIn", live: false },
@@ -125,7 +125,7 @@ export default async function SocialHubPage({
                     </div>
                   ) : platform.live ? (
                     <Button size="sm" asChild>
-                      <a href="/auth/instagram/start">Connect</a>
+                      <a href={platform.connectPath}>Connect</a>
                     </Button>
                   ) : (
                     <Button size="sm" disabled>
