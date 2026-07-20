@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCampaignDetail, getUnassignedContent } from "@/lib/campaigns";
 import { getCreatorsForCampaign, getUnassignedCreators } from "@/lib/creators";
+import { getReportsForCampaign } from "@/lib/reports";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EditCampaignForm } from "./edit-campaign-form";
@@ -12,6 +13,7 @@ import { RemoveContentButton } from "./remove-content-button";
 import { CampaignFiles } from "./campaign-files";
 import { AssignCreatorForm } from "./assign-creator-form";
 import { RemoveCreatorButton } from "./remove-creator-button";
+import { ReportLinks } from "./report-links";
 
 const TYPE_LABELS: Record<string, string> = {
   post: "Post",
@@ -35,6 +37,7 @@ export default async function CampaignDetailPage({
   const campaign = await getCampaignDetail(id, ctx.brand.id);
   if (!campaign) notFound();
 
+  const reports = await getReportsForCampaign(campaign.id, ctx.workspace.id);
   const unassigned = await getUnassignedContent(ctx.brand.id);
   const showCreators = ctx.workspace.type !== "creator";
   const [campaignCreators, unassignedCreators] = showCreators
@@ -166,6 +169,13 @@ export default async function CampaignDetailPage({
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-lg">
+        <CardContent className="pt-5">
+          <h2 className="mb-3 text-sm font-semibold">Shareable report</h2>
+          <ReportLinks campaignId={campaign.id} reports={reports} />
         </CardContent>
       </Card>
 
