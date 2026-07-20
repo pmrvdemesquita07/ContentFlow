@@ -62,6 +62,17 @@ export async function createWorkspace(
     return { error: "Both a workspace name and a brand name are required." };
   }
 
+  // Starter is capped at 1 workspace - creating another requires at least
+  // one of the user's existing workspaces to be on a paid plan.
+  const existingWorkspaces = await prisma.workspace.findMany({
+    where: { members: { some: { userId: user.id } } },
+    select: { plan: true },
+  });
+  const hasPaidWorkspace = existingWorkspaces.some((w) => w.plan !== "starter");
+  if (existingWorkspaces.length >= 1 && !hasPaidWorkspace) {
+    return { error: "Starter is limited to 1 workspace - upgrade an existing workspace to Pro or Studio to add another." };
+  }
+
   const workspace = await prisma.workspace.create({
     data: {
       name: workspaceName,
