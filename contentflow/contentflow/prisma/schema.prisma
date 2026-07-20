@@ -82,6 +82,21 @@ enum MessageStatus {
   replied
 }
 
+enum ContractStatus {
+  draft
+  sent
+  signed
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  overdue
+  cancelled
+}
+
 enum AssistantType {
   trends
   comment_reply
@@ -115,15 +130,16 @@ model Workspace {
   /// Set when the workspace is archived (hidden but not deleted) - null
   /// means active. Archiving is reversible; deleting the workspace is not.
   archivedAt DateTime?
-  members    WorkspaceMember[]
-  brands     Brand[]
-  content    Content[]
-  media      Media[]
-  messages   Message[]
-  comments   Comment[]
-  campaigns  Campaign[]
-  tasks      Task[]
-  creators   Creator[]
+  members   WorkspaceMember[]
+  brands    Brand[]
+  content   Content[]
+  media     Media[]
+  messages  Message[]
+  comments  Comment[]
+  campaigns Campaign[]
+  tasks     Task[]
+  creators  Creator[]
+  contracts Contract[]
 
   @@map("workspaces")
 }
@@ -179,6 +195,7 @@ model Campaign {
   content   Content[]
   media     Media[]
   creators  CampaignCreator[]
+  contracts Contract[]
 
   @@index([brandId])
   @@map("campaigns")
@@ -200,6 +217,7 @@ model Creator {
 
   workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   campaigns CampaignCreator[]
+  contracts Contract[]
 
   @@index([workspaceId])
   @@map("creators")
@@ -216,6 +234,50 @@ model CampaignCreator {
 
   @@unique([campaignId, creatorId])
   @@map("campaign_creators")
+}
+
+/// A real agreement with a creator - optionally tied to one campaign, but
+/// not required to be (a creator can be under a broader retainer). Payments
+/// are tracked separately underneath since one contract is often paid in
+/// installments (deposit, milestone, final).
+model Contract {
+  id         String         @id @default(uuid())
+  workspaceId String
+  creatorId  String
+  campaignId String?
+  title      String
+  amount     Decimal        @db.Decimal(10, 2)
+  currency   String         @default("EUR")
+  status     ContractStatus @default(draft)
+  startDate  DateTime?
+  endDate    DateTime?
+  notes      String?        @db.Text
+  createdAt  DateTime       @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator   Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  payments  Payment[]
+
+  @@index([workspaceId])
+  @@index([creatorId])
+  @@map("contracts")
+}
+
+model Payment {
+  id         String        @id @default(uuid())
+  contractId String
+  amount     Decimal       @db.Decimal(10, 2)
+  status     PaymentStatus @default(pending)
+  dueDate    DateTime?
+  paidAt     DateTime?
+  notes      String?       @db.Text
+  createdAt  DateTime      @default(now())
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@map("payments")
 }
 
 model BrandVoice {
