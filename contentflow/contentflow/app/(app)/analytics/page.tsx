@@ -9,6 +9,7 @@ import { resolveDateRange } from "@/lib/dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart } from "@/components/charts/bar-chart";
+import { LineChart } from "@/components/charts/line-chart";
 import { GrowthBadge } from "@/components/analytics/growth-badge";
 import { DateRangePicker } from "@/components/analytics/date-range-picker";
 import { AccountSwitcher } from "@/components/analytics/account-switcher";
@@ -78,15 +79,18 @@ export default async function AnalyticsPage({
     growth,
     byCampaign,
     byType,
+    byPlatform,
     perPost,
     hasAnyMetrics,
     followerTotals,
     followerGrowth,
     hasAnyAccounts,
     engagementRates,
+    followerSeries,
+    engagementSeries,
   } = await getAnalyticsData(ctx.brand.id, resolvedRange, selectedPlatform);
 
-  const demographics = await getBrandAudienceDemographics(ctx.brand.id);
+  const demographics = await getBrandAudienceDemographics(ctx.brand.id, selectedPlatform);
   const topMentions = await getTopMentions(ctx.brand.id);
 
   const hasStoryMetrics = totals.replies + totals.exits + totals.tapsForward > 0;
@@ -194,14 +198,66 @@ export default async function AnalyticsPage({
         </div>
       )}
 
+      {byPlatform.length > 1 && (
+        <Card>
+          <CardContent className="pt-5">
+            <h2 className="mb-4 text-sm font-semibold">Instagram vs TikTok</h2>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div>
+                <p className="mb-3 text-xs font-medium text-muted-foreground">Followers</p>
+                <BarChart
+                  items={byPlatform.map((p) => ({
+                    label: PLATFORM_LABELS[p.platform],
+                    value: p.followers,
+                  }))}
+                />
+              </div>
+              <div>
+                <p className="mb-3 text-xs font-medium text-muted-foreground">
+                  Interactions ({resolvedRange.label})
+                </p>
+                <BarChart
+                  items={byPlatform.map((p) => ({
+                    label: PLATFORM_LABELS[p.platform],
+                    value: p.interactions,
+                  }))}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasAnyAccounts && (followerSeries.length > 1 || engagementSeries.length > 1) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardContent className="pt-5">
+              <h2 className="mb-4 text-sm font-semibold">
+                Followers over time{selectedPlatform ? ` - ${PLATFORM_LABELS[selectedPlatform]}` : ""}
+              </h2>
+              <LineChart points={followerSeries} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-5">
+              <h2 className="mb-4 text-sm font-semibold">
+                Interactions over time{selectedPlatform ? ` - ${PLATFORM_LABELS[selectedPlatform]}` : ""}
+              </h2>
+              <LineChart points={engagementSeries} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {hasAnyAccounts && (
         <Card>
           <CardContent className="pt-5">
             <h2 className="text-sm font-semibold">Audience</h2>
             {!demographics.hasData ? (
               <p className="mt-2 text-sm text-muted-foreground">
-                No audience breakdown yet. Instagram only exposes gender, age, and location data
-                for accounts with 100+ followers.
+                {selectedPlatform === "tiktok"
+                  ? "TikTok's public API doesn't expose audience demographics for third-party apps."
+                  : "No audience breakdown yet. Instagram only exposes gender, age, and location data for accounts with 100+ followers."}
               </p>
             ) : (
               <div className="mt-4 grid gap-6 lg:grid-cols-2">
@@ -378,7 +434,7 @@ export default async function AnalyticsPage({
                       key={row.handle}
                       className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 text-sm"
                     >
-                                        <a
+                      <a
                         href={mentionProfileUrl(row.handle, row.platform)}
                         target="_blank"
                         rel="noreferrer"
