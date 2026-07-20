@@ -13,15 +13,15 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.01 285);
 
-  --primary: oklch(0.5 0.16 275);
-  --primary-foreground: oklch(0.98 0.005 275);
+  --primary: oklch(0.56 0.24 322);
+  --primary-foreground: oklch(0.98 0.01 322);
   --secondary: oklch(0.96 0.005 285);
   --secondary-foreground: oklch(0.24 0.01 285);
 
   --muted: oklch(0.96 0.005 285);
   --muted-foreground: oklch(0.5 0.01 285);
-  --accent: oklch(0.94 0.02 275);
-  --accent-foreground: oklch(0.28 0.05 275);
+  --accent: oklch(0.93 0.05 322);
+  --accent-foreground: oklch(0.32 0.09 322);
 
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.98 0.005 27);
@@ -32,7 +32,14 @@
 
   --border: oklch(0.9 0.005 285);
   --input: oklch(0.9 0.005 285);
-  --ring: oklch(0.5 0.16 275 / 0.5);
+  --ring: oklch(0.56 0.24 322 / 0.5);
+
+  /* Brand wordmark/hero gradient - vivid magenta into warm coral, the
+     "creator economy energy" accent. Never used for chart data or body
+     text, just logo/hero chrome, so it doesn't need the same contrast
+     validation as the semantic tokens above. */
+  --gradient-from: oklch(0.62 0.25 332);
+  --gradient-to: oklch(0.74 0.19 55);
 
   /* Chart tokens - validated categorical palette, see dataviz skill palette.md */
   --chart-1: #2a78d6;
@@ -53,15 +60,15 @@
   --popover: oklch(0.2 0.01 285);
   --popover-foreground: oklch(0.94 0.005 285);
 
-  --primary: oklch(0.72 0.14 275);
-  --primary-foreground: oklch(0.16 0.02 275);
+  --primary: oklch(0.74 0.19 322);
+  --primary-foreground: oklch(0.18 0.03 322);
   --secondary: oklch(0.27 0.01 285);
   --secondary-foreground: oklch(0.94 0.005 285);
 
   --muted: oklch(0.27 0.01 285);
   --muted-foreground: oklch(0.68 0.01 285);
-  --accent: oklch(0.3 0.03 275);
-  --accent-foreground: oklch(0.94 0.02 275);
+  --accent: oklch(0.32 0.07 322);
+  --accent-foreground: oklch(0.92 0.03 322);
 
   --destructive: oklch(0.65 0.2 27);
   --destructive-foreground: oklch(0.16 0.02 27);
@@ -72,7 +79,10 @@
 
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.72 0.14 275 / 0.5);
+  --ring: oklch(0.74 0.19 322 / 0.5);
+
+  --gradient-from: oklch(0.7 0.23 332);
+  --gradient-to: oklch(0.78 0.17 55);
 
   --chart-1: #3987e5;
   --chart-2: #008300;
@@ -114,6 +124,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -124,6 +135,29 @@
   body {
     background: var(--color-background);
     color: var(--color-foreground);
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  /* Brand wordmark/hero treatment - "gradientes energéticos" per the
+     SocialFlow design system (see design.md). Apply to short display text
+     only; the gradient is chrome, not something that needs WCAG contrast
+     validation against arbitrary backgrounds. */
+  .text-gradient-brand {
+    background-image: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  .bg-gradient-brand {
+    background-image: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
   }
 }
 
