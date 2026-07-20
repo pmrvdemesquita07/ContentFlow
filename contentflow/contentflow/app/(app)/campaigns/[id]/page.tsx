@@ -87,6 +87,49 @@ export default async function CampaignDetailPage({
 
       <Card>
         <CardContent className="pt-5">
+          <h2 className="mb-3 text-sm font-semibold">ROI</h2>
+          {campaign.roi ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Budget</p>
+                <p className="text-xl font-semibold">
+                  {campaign.roi.budget.toLocaleString(undefined, { style: "currency", currency: "EUR" })}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Cost per interaction</p>
+                <p className="text-xl font-semibold">
+                  {campaign.roi.costPerInteraction !== null
+                    ? campaign.roi.costPerInteraction.toLocaleString(undefined, {
+                        style: "currency",
+                        currency: "EUR",
+                      })
+                    : "No interactions yet"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Cost per reach</p>
+                <p className="text-xl font-semibold">
+                  {campaign.roi.costPerReach !== null
+                    ? campaign.roi.costPerReach.toLocaleString(undefined, {
+                        style: "currency",
+                        currency: "EUR",
+                      })
+                    : "No reach yet"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Set a budget below to see cost per interaction and cost per reach, based on the
+              real metrics already synced for this campaign&apos;s posts.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-5">
           <h2 className="mb-3 text-sm font-semibold">Posts in this campaign</h2>
           {campaign.posts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -186,6 +229,7 @@ export default async function CampaignDetailPage({
             description={campaign.description ?? ""}
             startDate={campaign.startDate}
             endDate={campaign.endDate}
+            budget={campaign.budget}
           />
         </CardContent>
       </Card>
