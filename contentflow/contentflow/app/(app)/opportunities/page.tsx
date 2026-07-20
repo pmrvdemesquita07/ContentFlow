@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import {
@@ -6,6 +7,7 @@ import {
   getOpenOpportunities,
   getMatchesForCreatorWorkspace,
 } from "@/lib/opportunities";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NewOpportunityForm } from "./new-opportunity-form";
@@ -45,6 +47,7 @@ export default async function OpportunitiesPage({
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   if (ctx.workspace.type === "creator") {
     const [opportunities, myMatches] = await Promise.all([
