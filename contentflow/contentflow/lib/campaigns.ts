@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db";
 
-function interactionsOf(m: { likes: number; comments: number; shares: number; saved: number; replies: number }) {
+export function interactionsOf(m: { likes: number; comments: number; shares: number; saved: number; replies: number }) {
   return m.likes + m.comments + m.shares + m.saved + m.replies;
 }
 
 /// ROI here means real cost vs real synced interactions/reach - never a
 /// fabricated revenue figure, since ContentFlow has no sales/e-commerce
 /// integration to know what a post actually generated in revenue.
-function roiOf(budget: number | null, interactions: number, reach: number) {
+export function roiOf(budget: number | null, interactions: number, reach: number) {
   if (budget === null) return null;
   return {
     budget,
