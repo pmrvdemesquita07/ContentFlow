@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { MessageCircle, Send, Heart, Users2, TrendingUp } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getMessagesForWorkspace } from "@/lib/mailbox";
 import { getNotificationFeed, getDailyDigest } from "@/lib/notifications";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -62,6 +64,7 @@ export default async function MailboxPage({
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const activeFilter = FILTERS.some((f) => f.value === status) ? status : "all";
   const [messages, activity, digest] = await Promise.all([
