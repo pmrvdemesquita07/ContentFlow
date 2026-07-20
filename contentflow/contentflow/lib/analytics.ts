@@ -47,6 +47,10 @@ function growthPercent(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100;
 }
 
+function dayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 export async function getAnalyticsData(
   brandId: string,
   range: ResolvedRange,
@@ -54,9 +58,12 @@ export async function getAnalyticsData(
 ) {
   const { start, end } = range;
 
+  // Always fetched unscoped by platform - the account switcher filters what's
+  // *displayed*, but the Instagram-vs-TikTok comparison below needs every
+  // connected platform's data regardless of which one is currently selected.
   const [metrics, socialAccounts, accountSnapshots] = await Promise.all([
     prisma.metric.findMany({
-      where: { content: { brandId }, ...(platform ? { platform } : {}) },
+      where: { content: { brandId } },
       include: {
         content: {
           select: {
@@ -75,10 +82,8 @@ export async function getAnalyticsData(
       },
       orderBy: { capturedAt: "desc" },
     }),
-    prisma.socialAccount.findMany({ where: { brandId, ...(platform ? { platform } : {}) } }),
-    prisma.accountSnapshot.findMany({
-      where: { socialAccount: { brandId, ...(platform ? { platform } : {}) } },
-    }),
+    prisma.socialAccount.findMany({ where: { brandId } }),
+    prisma.accountSnapshot.findMany({ where: { socialAccount: { brandId } } }),
   ]);
 
   // Metric rows are snapshots over time (one per sync), so only the most
@@ -94,9 +99,10 @@ export async function getAnalyticsData(
   // Everything below scopes to posts *published* within the selected window -
   // picking a range should actually change what you see, not just the growth
   // badges next to an unbounded lifetime total.
-  const inRange = latest.filter(
+  const inRangeAll = latest.filter(
     (m) => m.content.publishedAt && m.content.publishedAt >= start && m.content.publishedAt <= end
   );
+  const inRange = platform ? inRangeAll.filter((m) => m.platform === platform) : inRangeAll;
 
   const totals = inRange.reduce((acc, m) => addMetric(acc, m), { ...EMPTY_TOTALS });
   const totalInteractions = interactionsOf(totals);
@@ -107,9 +113,12 @@ export async function getAnalyticsData(
   const periodMs = end.getTime() - start.getTime();
   const prevEnd = new Date(start.getTime() - 1);
   const prevStart = new Date(prevEnd.getTime() - periodMs);
-  const previousInRange = latest.filter(
+  const previousInRangeAll = latest.filter(
     (m) => m.content.publishedAt && m.content.publishedAt >= prevStart && m.content.publishedAt <= prevEnd
   );
+  const previousInRange = platform
+    ? previousInRangeAll.filter((m) => m.platform === platform)
+    : previousInRangeAll;
   const previousTotals = previousInRange.reduce((acc, m) => addMetric(acc, m), { ...EMPTY_TOTALS });
 
   const growth = {
@@ -142,9 +151,37 @@ export async function getAnalyticsData(
     byType.set(m.content.type, typeRow);
   }
 
-  function followersAsOf(cutoff: Date) {
+  // Always all platforms - powers the Instagram-vs-TikTok comparison chart,
+  // which stays visible regardless of what the account switcher has selected.
+  const byPlatformAccounts = new Map<SocialPlatform, { followers: number; following: number }>();
+  for (const a of socialAccounts) {
+    const row = byPlatformAccounts.get(a.platform) ?? { followers: 0, following: 0 };
+    row.followers += a.followersCount ?? 0;
+    row.following += a.followingCount ?? 0;
+    byPlatformAccounts.set(a.platform, row);
+  }
+  const byPlatformMetrics = new Map<SocialPlatform, Totals>();
+  for (const m of inRangeAll) {
+    const row = byPlatformMetrics.get(m.platform) ?? { ...EMPTY_TOTALS };
+    addMetric(row, m);
+    byPlatformMetrics.set(m.platform, row);
+  }
+  const platformsPresent = new Set([...byPlatformAccounts.keys(), ...byPlatformMetrics.keys()]);
+  const byPlatform = [...platformsPresent].map((p) => {
+    const m = byPlatformMetrics.get(p) ?? { ...EMPTY_TOTALS };
+    return {
+      platform: p,
+      followers: byPlatformAccounts.get(p)?.followers ?? 0,
+      following: byPlatformAccounts.get(p)?.following ?? 0,
+      interactions: interactionsOf(m),
+      reach: m.reach,
+      videoViews: m.videoViews,
+    };
+  });
+
+  function followersAsOf(cutoff: Date, snapshots: typeof accountSnapshots) {
     const latestPerAccount = new Map<string, (typeof accountSnapshots)[number]>();
-    for (const snap of accountSnapshots) {
+    for (const snap of snapshots) {
       if (snap.capturedAt > cutoff) continue;
       const existing = latestPerAccount.get(snap.socialAccountId);
       if (!existing || snap.capturedAt > existing.capturedAt) {
@@ -157,9 +194,15 @@ export async function getAnalyticsData(
     };
   }
 
+  const filteredAccounts = platform ? socialAccounts.filter((a) => a.platform === platform) : socialAccounts;
+  const filteredAccountIds = new Set(filteredAccounts.map((a) => a.id));
+  const filteredSnapshots = platform
+    ? accountSnapshots.filter((s) => filteredAccountIds.has(s.socialAccountId))
+    : accountSnapshots;
+
   const liveFollowerTotals = {
-    followers: socialAccounts.reduce((sum, a) => sum + (a.followersCount ?? 0), 0),
-    following: socialAccounts.reduce((sum, a) => sum + (a.followingCount ?? 0), 0),
+    followers: filteredAccounts.reduce((sum, a) => sum + (a.followersCount ?? 0), 0),
+    following: filteredAccounts.reduce((sum, a) => sum + (a.followingCount ?? 0), 0),
   };
 
   // Preset ranges always end "now", so the live cached count (refreshed on
@@ -167,7 +210,7 @@ export async function getAnalyticsData(
   // range can end in the past, where the as-of-that-date snapshot is the
   // historically correct value - falling back to live only if no snapshot
   // exists yet at all.
-  const followersAtEnd = followersAsOf(end);
+  const followersAtEnd = followersAsOf(end, filteredSnapshots);
   const followerTotals =
     range.key === "custom"
       ? {
@@ -205,7 +248,7 @@ export async function getAnalyticsData(
     })
     .sort((a, b) => b.interactions - a.interactions);
 
-  const previousFollowerTotals = followersAsOf(start);
+  const previousFollowerTotals = followersAsOf(start, filteredSnapshots);
   const followerGrowth = {
     followers: growthPercent(followerTotals.followers, previousFollowerTotals.followers),
     following: growthPercent(followerTotals.following, previousFollowerTotals.following),
@@ -226,16 +269,50 @@ export async function getAnalyticsData(
     byViews: engagementRateByViews(totalInteractions, totals),
   };
 
+  // Day-bucketed series over the selected range, scoped to whichever
+  // platform (or all) the switcher currently has selected - same bucketing
+  // rule the Dashboard's charts use (latest snapshot/metric per day, summed).
+  const latestSnapshotPerAccountDay = new Map<string, (typeof filteredSnapshots)[number]>();
+  for (const snap of filteredSnapshots) {
+    if (snap.capturedAt < start || snap.capturedAt > end) continue;
+    const key = `${snap.socialAccountId}:${dayKey(snap.capturedAt)}`;
+    const existing = latestSnapshotPerAccountDay.get(key);
+    if (!existing || snap.capturedAt > existing.capturedAt) {
+      latestSnapshotPerAccountDay.set(key, snap);
+    }
+  }
+  const followersByDay = new Map<string, number>();
+  for (const snap of latestSnapshotPerAccountDay.values()) {
+    const key = dayKey(snap.capturedAt);
+    followersByDay.set(key, (followersByDay.get(key) ?? 0) + snap.followersCount);
+  }
+  const followerSeries = [...followersByDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, followers]) => ({ label: day, value: followers }));
+
+  const engagementByDay = new Map<string, number>();
+  for (const m of inRange) {
+    if (!m.content.publishedAt) continue;
+    const key = dayKey(m.content.publishedAt);
+    engagementByDay.set(key, (engagementByDay.get(key) ?? 0) + interactionsOf(m));
+  }
+  const engagementSeries = [...engagementByDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, interactions]) => ({ label: day, value: interactions }));
+
   return {
     totals,
     growth,
     byCampaign: [...byCampaign.values()],
     byType: [...byType.entries()].map(([type, row]) => ({ type, ...row })),
+    byPlatform,
     perPost,
     hasAnyMetrics: inRange.length > 0,
     followerTotals,
     followerGrowth,
     hasAnyAccounts: socialAccounts.length > 0,
     engagementRates,
+    followerSeries,
+    engagementSeries,
   };
 }
