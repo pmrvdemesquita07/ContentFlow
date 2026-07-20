@@ -6,6 +6,9 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/reports"];
 
 function isPublicPath(pathname: string) {
+  // Exact match for "/" - it's the public marketing homepage, but every
+  // other path also starts with "/" so it can't join PUBLIC_PATHS as a prefix.
+  if (pathname === "/") return true;
   return PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 }
 
