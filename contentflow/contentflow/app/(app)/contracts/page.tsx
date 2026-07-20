@@ -8,6 +8,7 @@ import {
   getCampaignsForWorkspaceOptions,
   paidTotal,
 } from "@/lib/contracts";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NewContractForm } from "./new-contract-form";
@@ -25,6 +26,7 @@ export default async function ContractsPage() {
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
   if (ctx.workspace.type === "creator") redirect("/dashboard");
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const [contracts, creators, campaigns] = await Promise.all([
     getContractsForWorkspace(ctx.workspace.id),
