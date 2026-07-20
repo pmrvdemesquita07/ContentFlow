@@ -82,17 +82,35 @@ export async function getDashboardOverview(brandId: string) {
       }),
     ]);
 
-  const topPerformers = topPerformersRaw
+  const topPerformersFlat = topPerformersRaw
     .map((content) => ({
       id: content.id,
       title: content.title,
       type: content.type,
       thumbnailUrl: content.thumbnailUrl,
+      // Synced content is created with a single originating platform - the
+      // first entry is the real one to attribute a post's performance to.
+      platform: content.platforms[0] ?? null,
       interactions: content.metrics[0] ? interactionsOf(content.metrics[0]) : 0,
     }))
     .filter((p) => p.interactions > 0)
-    .sort((a, b) => b.interactions - a.interactions)
-    .slice(0, 5);
+    .sort((a, b) => b.interactions - a.interactions);
+
+  const topPerformers = topPerformersFlat.slice(0, 5);
+
+  // Grouped by platform so a high-view-count TikTok video can't crowd out
+  // Instagram's top posts (or vice versa) in a single combined list.
+  const byPlatform = new Map<string, typeof topPerformersFlat>();
+  for (const post of topPerformersFlat) {
+    if (!post.platform) continue;
+    const list = byPlatform.get(post.platform) ?? [];
+    if (list.length < 5) list.push(post);
+    byPlatform.set(post.platform, list);
+  }
+  const topPerformersByPlatform = [...byPlatform.entries()].map(([platform, posts]) => ({
+    platform,
+    posts,
+  }));
 
   const activeCampaigns = campaigns.filter((c) => {
     if (c.startDate && c.startDate > now) return false;
@@ -134,6 +152,7 @@ export async function getDashboardOverview(brandId: string) {
 
   return {
     topPerformers,
+    topPerformersByPlatform,
     activeCampaigns,
     last7Days,
     upcomingTasks: tasks,
