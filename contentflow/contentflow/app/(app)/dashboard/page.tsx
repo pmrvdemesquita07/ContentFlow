@@ -12,7 +12,7 @@ import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { toCsv } from "@/lib/csv";
 import { ExportPdfButton } from "./export-button";
 import { cn } from "@/lib/utils";
-import type { ContentStatus } from "@/lib/generated/prisma/enums";
+import type { ContentStatus, SocialPlatform } from "@/lib/generated/prisma/enums";
 
 const STATUS_LABELS: Record<ContentStatus, string> = {
   idea: "Ideas",
@@ -20,6 +20,14 @@ const STATUS_LABELS: Record<ContentStatus, string> = {
   scheduled: "Scheduled",
   published: "Published",
   archived: "Archived",
+};
+
+const PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  x: "X",
+  youtube: "YouTube",
+  linkedin: "LinkedIn",
 };
 
 function GrowthTag({ value }: { value: number | null }) {
@@ -30,6 +38,35 @@ function GrowthTag({ value }: { value: number | null }) {
       {positive ? "+" : ""}
       {value.toFixed(1)}%
     </span>
+  );
+}
+
+function TopPerformerRow({
+  post,
+}: {
+  post: { id: string; title: string; type: string; thumbnailUrl: string | null; interactions: number };
+}) {
+  return (
+    <li className="flex items-center gap-3 py-2.5">
+      {post.thumbnailUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={post.thumbnailUrl}
+          alt=""
+          className="size-10 shrink-0 rounded object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="size-10 shrink-0 rounded bg-muted" />
+      )}
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{post.title}</span>
+      <Badge variant="secondary" className="shrink-0 capitalize">
+        {post.type}
+      </Badge>
+      <Badge variant="success" className="shrink-0">
+        {post.interactions.toLocaleString()}
+      </Badge>
+    </li>
   );
 }
 
@@ -132,31 +169,25 @@ export default async function DashboardPage({
               <p className="text-sm text-muted-foreground">
                 No published posts with metrics in the last 30 days yet.
               </p>
+            ) : overview.topPerformersByPlatform.length > 1 ? (
+              <div className="grid gap-6 sm:grid-cols-2">
+                {overview.topPerformersByPlatform.map((group) => (
+                  <div key={group.platform}>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      {PLATFORM_LABELS[group.platform as SocialPlatform] ?? group.platform}
+                    </p>
+                    <ul className="flex flex-col divide-y">
+                      {group.posts.map((post) => (
+                        <TopPerformerRow key={post.id} post={post} />
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             ) : (
               <ul className="flex flex-col divide-y">
                 {overview.topPerformers.map((post) => (
-                  <li key={post.id} className="flex items-center gap-3 py-2.5">
-                    {post.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={post.thumbnailUrl}
-                        alt=""
-                        className="size-10 shrink-0 rounded object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="size-10 shrink-0 rounded bg-muted" />
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                      {post.title}
-                    </span>
-                    <Badge variant="secondary" className="shrink-0 capitalize">
-                      {post.type}
-                    </Badge>
-                    <Badge variant="success" className="shrink-0">
-                      {post.interactions.toLocaleString()}
-                    </Badge>
-                  </li>
+                  <TopPerformerRow key={post.id} post={post} />
                 ))}
               </ul>
             )}
