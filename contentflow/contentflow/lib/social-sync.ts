@@ -12,6 +12,11 @@ import {
   getInstagramAudienceDemographics,
   type InstagramMedia,
 } from "@/lib/instagram";
+import {
+  refreshTikTokToken,
+  getTikTokUserInfo,
+  getTikTokVideos,
+} from "@/lib/tiktok";
 import { parseMentions } from "@/lib/text-parse";
 import type { SocialAccountModel } from "@/lib/generated/prisma/models";
 import type { ContentType } from "@/lib/generated/prisma/enums";
@@ -309,12 +314,146 @@ async function syncInstagramMessages(account: SocialAccountModel, workspaceId: s
   }
 }
 
+/**
+ * TikTok access tokens last ~24h (far shorter than Instagram's 60-day
+ * tokens), so every sync has to be ready to refresh first - reusing an
+ * expired token would just fail the whole sync instead of self-healing.
+ */
+async function ensureFreshTikTokToken(account: SocialAccountModel): Promise<string> {
+  const expiresSoon = !account.tokenExpiresAt || account.tokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
+  if (!expiresSoon) return account.oauthAccessToken!;
+
+  if (!account.oauthRefreshToken) {
+    throw new Error(`TikTok account ${account.id} has no refresh token - reconnect required.`);
+  }
+  const refreshed = await refreshTikTokToken(account.oauthRefreshToken);
+  await prisma.socialAccount.update({
+    where: { id: account.id },
+    data: {
+      oauthAccessToken: refreshed.access_token,
+      oauthRefreshToken: refreshed.refresh_token,
+      tokenExpiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
+    },
+  });
+  return refreshed.access_token;
+}
+
+function tikTokMentions(video: { video_description?: string }) {
+  return parseMentions(video.video_description);
+}
+
+export async function syncTikTokAccount(account: SocialAccountModel) {
+  if (!account.oauthAccessToken) return;
+
+  const brand = await prisma.brand.findUnique({
+    where: { id: account.brandId },
+    select: { workspaceId: true },
+  });
+  if (!brand) return;
+
+  const owner = await prisma.workspaceMember.findFirst({
+    where: { workspaceId: brand.workspaceId },
+    orderBy: { createdAt: "asc" },
+    select: { userId: true },
+  });
+  if (!owner) return;
+
+  const accessToken = await ensureFreshTikTokToken(account);
+
+  await syncTikTokProfile(account, accessToken);
+  await syncTikTokVideos(account, accessToken, brand.workspaceId, owner.userId);
+
+  await prisma.socialAccount.update({
+    where: { id: account.id },
+    data: { lastSyncedAt: new Date() },
+  });
+}
+
+async function syncTikTokProfile(account: SocialAccountModel, accessToken: string) {
+  const profile = await getTikTokUserInfo(accessToken).catch(() => null);
+  if (!profile) return;
+
+  await prisma.socialAccount.update({
+    where: { id: account.id },
+    data: {
+      followersCount: profile.followerCount,
+      followingCount: profile.followingCount,
+      mediaCount: profile.videoCount,
+      profilePictureUrl: profile.avatarUrl,
+      externalUsername: profile.displayName,
+    },
+  });
+
+  await prisma.accountSnapshot.create({
+    data: {
+      socialAccountId: account.id,
+      followersCount: profile.followerCount,
+      followingCount: profile.followingCount,
+      mediaCount: profile.videoCount,
+    },
+  });
+}
+
+async function syncTikTokVideos(
+  account: SocialAccountModel,
+  accessToken: string,
+  workspaceId: string,
+  userId: string
+) {
+  const videos = await getTikTokVideos(accessToken);
+
+  for (const video of videos) {
+    const title = video.title?.slice(0, 120) || video.video_description?.slice(0, 120) || "TikTok video";
+
+    const content = await prisma.content.upsert({
+      where: { brandId_externalId: { brandId: account.brandId, externalId: video.id } },
+      update: {
+        title,
+        body: video.video_description ?? null,
+        externalUrl: video.share_url ?? null,
+        thumbnailUrl: video.cover_image_url ?? null,
+        mentions: tikTokMentions(video),
+      },
+      create: {
+        workspaceId,
+        brandId: account.brandId,
+        title,
+        body: video.video_description ?? null,
+        type: "video",
+        status: "published",
+        platforms: ["tiktok"],
+        publishedAt: new Date(video.create_time * 1000),
+        createdBy: userId,
+        externalId: video.id,
+        externalUrl: video.share_url ?? null,
+        thumbnailUrl: video.cover_image_url ?? null,
+        mentions: tikTokMentions(video),
+      },
+    });
+
+    await prisma.metric.create({
+      data: {
+        contentId: content.id,
+        platform: "tiktok",
+        likes: video.like_count ?? 0,
+        comments: video.comment_count ?? 0,
+        shares: video.share_count ?? 0,
+        reach: 0,
+        saved: 0,
+        videoViews: video.view_count ?? 0,
+      },
+    });
+  }
+}
+
 export async function syncSocialAccountById(id: string) {
   const account = await prisma.socialAccount.findUnique({ where: { id } });
   if (!account || account.status !== "connected") return;
 
   if (account.platform === "instagram") {
     await syncInstagramAccount(account);
+  } else if (account.platform === "tiktok") {
+    await syncTikTokAccount(account);
   }
 }
 
@@ -324,6 +463,8 @@ export async function syncAllConnectedAccounts() {
     try {
       if (account.platform === "instagram") {
         await syncInstagramAccount(account);
+      } else if (account.platform === "tiktok") {
+        await syncTikTokAccount(account);
       }
     } catch (error) {
       console.error(`Sync failed for social account ${account.id}:`, error);
