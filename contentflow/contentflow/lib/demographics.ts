@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { SocialPlatform } from "@/lib/generated/prisma/enums";
 
 export type DemographicItem = { label: string; percent: number };
 
@@ -30,11 +31,18 @@ function toPercentItems(items: RawItem[], labelFor: (label: string) => string, l
 /**
  * Combines demographics across every connected account for a brand by
  * summing raw values before converting to percentages, so a brand with
- * multiple connected accounts still gets one unified breakdown.
+ * multiple connected accounts still gets one unified breakdown - or, when
+ * `platform` is given, scopes to just that one account (matching whatever
+ * the Analytics account switcher currently has selected). TikTok's public
+ * API has no demographics endpoint for third-party apps, so a TikTok-only
+ * selection always comes back with hasData: false, never fabricated numbers.
  */
-export async function getBrandAudienceDemographics(brandId: string): Promise<BrandDemographics> {
+export async function getBrandAudienceDemographics(
+  brandId: string,
+  platform?: SocialPlatform
+): Promise<BrandDemographics> {
   const accounts = await prisma.socialAccount.findMany({
-    where: { brandId, status: "connected" },
+    where: { brandId, status: "connected", ...(platform ? { platform } : {}) },
     include: { demographics: true },
   });
 
