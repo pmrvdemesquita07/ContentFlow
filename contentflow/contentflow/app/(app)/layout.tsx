@@ -23,6 +23,8 @@ import {
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getSearchIndex } from "@/lib/search";
+import { planAtLeast } from "@/lib/plan";
+import type { Plan } from "@/lib/generated/prisma/enums";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
@@ -30,16 +32,16 @@ import { BrandSwitcher } from "@/components/workspace/brand-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandSearch } from "@/components/search/command-search";
 
-const ACTIVE_LINKS = [
+const ACTIVE_LINKS: { href: string; label: string; icon: typeof LayoutDashboard; minPlan?: Plan }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/posts", label: "Posts", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/tasks", label: "Tasks", icon: SquareCheck },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/opportunities", label: "Opportunities", icon: Briefcase },
+  { href: "/tasks", label: "Tasks", icon: SquareCheck, minPlan: "pro" },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone, minPlan: "pro" },
+  { href: "/opportunities", label: "Opportunities", icon: Briefcase, minPlan: "pro" },
   { href: "/media", label: "Media", icon: Image },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/mailbox", label: "Mailbox", icon: Inbox },
+  { href: "/mailbox", label: "Mailbox", icon: Inbox, minPlan: "pro" },
   { href: "/social-hub", label: "Social Hub", icon: Share2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -79,7 +81,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <CommandSearch index={searchIndex} />
         </div>
         <nav className="flex flex-1 flex-col gap-0.5">
-          {ACTIVE_LINKS.map((link) => (
+          {ACTIVE_LINKS.filter(
+            (link) => !link.minPlan || planAtLeast(ctx.workspace.plan, link.minPlan)
+          ).map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -89,7 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {link.label}
             </Link>
           ))}
-          {ctx.workspace.type !== "creator" && (
+          {ctx.workspace.type !== "creator" && planAtLeast(ctx.workspace.plan, "pro") && (
             <Link
               href={CREATORS_LINK.href}
               className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
@@ -98,7 +102,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {CREATORS_LINK.label}
             </Link>
           )}
-          {ctx.workspace.type !== "creator" && (
+          {ctx.workspace.type !== "creator" && planAtLeast(ctx.workspace.plan, "pro") && (
             <Link
               href={CONTRACTS_LINK.href}
               className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
@@ -107,7 +111,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {CONTRACTS_LINK.label}
             </Link>
           )}
-          {ctx.workspace.type !== "creator" && (
+          {ctx.workspace.type !== "creator" && planAtLeast(ctx.workspace.plan, "studio") && (
             <Link
               href={DISCOVER_LINK.href}
               className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
@@ -116,14 +120,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {DISCOVER_LINK.label}
             </Link>
           )}
-          <Link
-            href={COMPETITORS_LINK.href}
-            className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
-          >
-            <COMPETITORS_LINK.icon className="size-4 text-muted-foreground" />
-            {COMPETITORS_LINK.label}
-          </Link>
-          {ctx.workspace.type === "agency" && (
+          {planAtLeast(ctx.workspace.plan, "pro") && (
+            <Link
+              href={COMPETITORS_LINK.href}
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              <COMPETITORS_LINK.icon className="size-4 text-muted-foreground" />
+              {COMPETITORS_LINK.label}
+            </Link>
+          )}
+          {ctx.workspace.type === "agency" && planAtLeast(ctx.workspace.plan, "studio") && (
             <Link
               href={AGENCY_LINK.href}
               className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
@@ -145,6 +151,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           ))}
         </nav>
+        {ctx.workspace.plan === "starter" && (
+          <Link
+            href="/settings"
+            className="mb-2 rounded-md border border-dashed p-2.5 text-xs text-muted-foreground hover:border-primary hover:text-foreground"
+          >
+            Estás no plano Starter -{" "}
+            <span className="font-medium text-primary">upgrade</span> para desbloquear Campanhas,
+            Tarefas, Contratos e mais.
+          </Link>
+        )}
         <div className="flex items-center gap-1">
           <form action={signOut} className="flex-1">
             <Button type="submit" variant="ghost" size="sm" className="w-full justify-start">
