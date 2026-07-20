@@ -18,6 +18,7 @@ import {
   FileSignature,
   Radar,
   Compass,
+  Briefcase,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
@@ -35,6 +36,7 @@ const ACTIVE_LINKS = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/tasks", label: "Tasks", icon: SquareCheck },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/opportunities", label: "Opportunities", icon: Briefcase },
   { href: "/media", label: "Media", icon: Image },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/mailbox", label: "Mailbox", icon: Inbox },
