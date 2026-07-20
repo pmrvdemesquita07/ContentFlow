@@ -4,6 +4,18 @@ function interactionsOf(m: { likes: number; comments: number; shares: number; sa
   return m.likes + m.comments + m.shares + m.saved + m.replies;
 }
 
+/// ROI here means real cost vs real synced interactions/reach - never a
+/// fabricated revenue figure, since ContentFlow has no sales/e-commerce
+/// integration to know what a post actually generated in revenue.
+function roiOf(budget: number | null, interactions: number, reach: number) {
+  if (budget === null) return null;
+  return {
+    budget,
+    costPerInteraction: interactions > 0 ? budget / interactions : null,
+    costPerReach: reach > 0 ? budget / reach : null,
+  };
+}
+
 export async function getCampaignsForBrand(brandId: string) {
   const campaigns = await prisma.campaign.findMany({
     where: { brandId },
@@ -27,6 +39,7 @@ export async function getCampaignsForBrand(brandId: string) {
       },
       { interactions: 0, reach: 0 }
     );
+    const budget = c.budget !== null ? Number(c.budget) : null;
     return {
       id: c.id,
       name: c.name,
@@ -34,6 +47,8 @@ export async function getCampaignsForBrand(brandId: string) {
       startDate: c.startDate,
       endDate: c.endDate,
       contentCount: c.content.length,
+      budget,
+      roi: roiOf(budget, totals.interactions, totals.reach),
       ...totals,
     };
   });
@@ -82,12 +97,16 @@ export async function getCampaignDetail(campaignId: string, brandId: string) {
     { interactions: 0, reach: 0, likes: 0, comments: 0 }
   );
 
+  const budget = campaign.budget !== null ? Number(campaign.budget) : null;
+
   return {
     id: campaign.id,
     name: campaign.name,
     description: campaign.description,
     startDate: campaign.startDate,
     endDate: campaign.endDate,
+    budget,
+    roi: roiOf(budget, totals.interactions, totals.reach),
     posts,
     totals,
     files: campaign.media,
