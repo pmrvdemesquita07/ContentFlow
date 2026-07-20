@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getOpportunityDetail } from "@/lib/opportunities";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusSelect } from "./status-select";
@@ -28,6 +29,7 @@ export default async function OpportunityDetailPage({
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
   if (ctx.workspace.type === "creator") redirect("/opportunities");
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const opportunity = await getOpportunityDetail(id, ctx.workspace.id);
   if (!opportunity) notFound();
