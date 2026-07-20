@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCompetitorsForWorkspace } from "@/lib/competitors";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { GrowthBadge } from "@/components/analytics/growth-badge";
 import { NewCompetitorForm } from "./new-competitor-form";
@@ -19,6 +21,7 @@ export default async function CompetitorsPage() {
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const competitors = await getCompetitorsForWorkspace(ctx.workspace.id);
 
