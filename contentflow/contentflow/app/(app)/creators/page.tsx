@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCreatorsForWorkspace } from "@/lib/creators";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NewCreatorForm } from "./new-creator-form";
@@ -13,6 +14,7 @@ export default async function CreatorsPage() {
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
   if (ctx.workspace.type === "creator") redirect("/dashboard");
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const creators = await getCreatorsForWorkspace(ctx.workspace.id);
 
