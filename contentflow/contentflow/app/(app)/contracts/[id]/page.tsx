@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getContractDetail, paidTotal } from "@/lib/contracts";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { ContractStatusSelect } from "./contract-status-select";
 import { PaymentStatusSelect } from "./payment-status-select";
@@ -20,6 +21,7 @@ export default async function ContractDetailPage({
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const contract = await getContractDetail(id, ctx.workspace.id);
   if (!contract) notFound();
