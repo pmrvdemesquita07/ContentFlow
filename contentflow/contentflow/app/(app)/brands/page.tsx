@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand, getArchivedWorkspaces } from "@/lib/workspace";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { NewBrandForm } from "./new-brand-form";
 import { NewWorkspaceForm } from "./new-workspace-form";
 import { SwitchBrandButton } from "./switch-brand-button";
@@ -15,6 +17,7 @@ export default async function BrandsPage() {
   if (!ctx) return null;
 
   const archivedWorkspaces = await getArchivedWorkspaces(user.id);
+  const canCreateWorkspace = ctx.workspaces.some((w) => w.plan !== "starter");
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -53,11 +56,24 @@ export default async function BrandsPage() {
       <Card>
         <CardContent className="pt-5">
           <h2 className="mb-3 text-sm font-semibold">Create a new workspace</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Use a separate workspace for a different client or team - each keeps its own brands,
-            content, and connected accounts.
-          </p>
-          <NewWorkspaceForm />
+          {canCreateWorkspace ? (
+            <>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Use a separate workspace for a different client or team - each keeps its own
+                brands, content, and connected accounts.
+              </p>
+              <NewWorkspaceForm />
+            </>
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Starter is limited to 1 workspace. Upgrade to Pro or Studio to add more.
+              </p>
+              <Button asChild size="sm">
+                <Link href="/settings">Ver planos</Link>
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
