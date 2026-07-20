@@ -3,6 +3,7 @@ import { TrendingUp, Megaphone, SquareCheck, CalendarDays, Trophy } from "lucide
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getDashboardData, getDashboardOverview, resolveDateRange } from "@/lib/dashboard";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LineChart } from "@/components/charts/line-chart";
@@ -80,6 +81,7 @@ export default async function DashboardPage({
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
+  const isPro = planAtLeast(ctx.workspace.plan, "pro");
 
   const [
     {
@@ -121,8 +123,12 @@ export default async function DashboardPage({
           <div className="print-hide">
             <DateRangePicker basePath="/dashboard" current={resolvedRange} />
           </div>
-          <ExportCsvButton filename={`dashboard-${resolvedRange.key}.csv`} csv={csv} />
-          <ExportPdfButton />
+          {isPro && (
+            <>
+              <ExportCsvButton filename={`dashboard-${resolvedRange.key}.csv`} csv={csv} />
+              <ExportPdfButton />
+            </>
+          )}
         </div>
       </div>
 
@@ -156,7 +162,7 @@ export default async function DashboardPage({
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={cn("grid gap-4", isPro && "lg:grid-cols-2")}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -194,73 +200,77 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Megaphone className="size-4 text-primary" />
-              Active campaigns
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overview.activeCampaigns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No campaigns running right now.</p>
-            ) : (
-              <ul className="flex flex-col divide-y">
-                {overview.activeCampaigns.map((campaign) => (
-                  <li key={campaign.id} className="py-2.5">
-                    <Link
-                      href={`/campaigns/${campaign.id}`}
-                      className="text-sm font-medium hover:underline"
-                    >
-                      {campaign.name}
-                    </Link>
-                    {campaign.endDate && (
-                      <p className="text-xs text-muted-foreground">
-                        Ends {new Date(campaign.endDate).toLocaleDateString()}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        {isPro && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Megaphone className="size-4 text-primary" />
+                Active campaigns
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {overview.activeCampaigns.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No campaigns running right now.</p>
+              ) : (
+                <ul className="flex flex-col divide-y">
+                  {overview.activeCampaigns.map((campaign) => (
+                    <li key={campaign.id} className="py-2.5">
+                      <Link
+                        href={`/campaigns/${campaign.id}`}
+                        className="text-sm font-medium hover:underline"
+                      >
+                        {campaign.name}
+                      </Link>
+                      {campaign.endDate && (
+                        <p className="text-xs text-muted-foreground">
+                          Ends {new Date(campaign.endDate).toLocaleDateString()}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <SquareCheck className="size-4 text-primary" />
-              To-dos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overview.upcomingTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing outstanding - nice.</p>
-            ) : (
-              <ul className="flex flex-col divide-y">
-                {overview.upcomingTasks.map((task) => (
-                  <li key={task.id} className="flex items-center gap-2.5 py-2.5">
-                    <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
-                    {task.dueDate && (
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {new Date(task.dueDate).toLocaleDateString()}
-                      </span>
-                    )}
-                    <PriorityBadge priority={task.priority} />
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Link
-              href="/tasks"
-              className="mt-3 inline-block text-xs text-muted-foreground hover:text-foreground hover:underline"
-            >
-              View all tasks →
-            </Link>
-          </CardContent>
-        </Card>
+      <div className={cn("grid gap-4", isPro && "lg:grid-cols-2")}>
+        {isPro && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <SquareCheck className="size-4 text-primary" />
+                To-dos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {overview.upcomingTasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing outstanding - nice.</p>
+              ) : (
+                <ul className="flex flex-col divide-y">
+                  {overview.upcomingTasks.map((task) => (
+                    <li key={task.id} className="flex items-center gap-2.5 py-2.5">
+                      <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
+                      {task.dueDate && (
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {new Date(task.dueDate).toLocaleDateString()}
+                        </span>
+                      )}
+                      <PriorityBadge priority={task.priority} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link
+                href="/tasks"
+                className="mt-3 inline-block text-xs text-muted-foreground hover:text-foreground hover:underline"
+              >
+                View all tasks →
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
