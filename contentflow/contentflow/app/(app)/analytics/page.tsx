@@ -5,6 +5,7 @@ import { getAnalyticsData } from "@/lib/analytics";
 import { getBrandAudienceDemographics } from "@/lib/demographics";
 import { getTopMentions } from "@/lib/mentions";
 import { getSocialAccountsForBrand } from "@/lib/social";
+import { getContentTrends } from "@/lib/trends";
 import { resolveDateRange } from "@/lib/dashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,22 @@ function mentionProfileUrl(handle: string, platform: SocialPlatform | null) {
   return `https://instagram.com/${handle}`;
 }
 
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function formatHour(hour: number) {
+  const period = hour < 12 ? "AM" : "PM";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h}${period}`;
+}
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
@@ -92,6 +109,7 @@ export default async function AnalyticsPage({
 
   const demographics = await getBrandAudienceDemographics(ctx.brand.id, selectedPlatform);
   const topMentions = await getTopMentions(ctx.brand.id);
+  const trends = await getContentTrends(ctx.brand.id, selectedPlatform);
 
   const hasStoryMetrics = totals.replies + totals.exits + totals.tapsForward > 0;
   const percentFormatter = (v: number) => `${v.toFixed(0)}%`;
@@ -247,6 +265,59 @@ export default async function AnalyticsPage({
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {trends && (
+        <Card>
+          <CardContent className="pt-5">
+            <h2 className="mb-1 text-sm font-semibold">Trends</h2>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Patterns from your last {trends.sampleSize} published posts
+              {selectedPlatform ? ` on ${PLATFORM_LABELS[selectedPlatform]}` : ""} - real
+              averages, not a forecast.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Best day to post</p>
+                <p className="text-xl font-semibold">{WEEKDAY_NAMES[trends.byDay[0].day]}</p>
+                <p className="text-xs text-muted-foreground">
+                  avg {Math.round(trends.byDay[0].avg).toLocaleString()} interactions (
+                  {trends.byDay[0].count} posts)
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Best time to post</p>
+                <p className="text-xl font-semibold">{formatHour(trends.byHour[0].hour)}</p>
+                <p className="text-xs text-muted-foreground">
+                  avg {Math.round(trends.byHour[0].avg).toLocaleString()} interactions (
+                  {trends.byHour[0].count} posts)
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Best content type</p>
+                <p className="text-xl font-semibold capitalize">
+                  {TYPE_LABELS[trends.byType[0].type] ?? trends.byType[0].type}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  avg {Math.round(trends.byType[0].avg).toLocaleString()} interactions (
+                  {trends.byType[0].count} posts)
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Recent vs earlier posts</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xl font-semibold">
+                    {trends.trend.recentAvg !== null
+                      ? Math.round(trends.trend.recentAvg).toLocaleString()
+                      : "-"}
+                  </p>
+                  <GrowthBadge value={trends.trend.changePercent} />
+                </div>
+                <p className="text-xs text-muted-foreground">avg interactions per post</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {hasAnyAccounts && (
