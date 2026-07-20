@@ -6,6 +6,7 @@ import { signIn } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/brand/logo";
 import {
   Card,
   CardContent,
@@ -19,10 +20,11 @@ export default function LoginPage() {
   const [state, formAction, pending] = useActionState(signIn, undefined);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/40 p-4">
+      <Logo size="lg" />
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Log in to ContentFlow</CardTitle>
+          <CardTitle className="text-xl">Log in</CardTitle>
           <CardDescription>The single source of truth for your content.</CardDescription>
         </CardHeader>
         <form action={formAction}>
