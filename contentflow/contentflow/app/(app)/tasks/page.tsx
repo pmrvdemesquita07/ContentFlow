@@ -1,6 +1,8 @@
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getTasksForBrand } from "@/lib/tasks";
+import { planAtLeast } from "@/lib/plan";
 import { PriorityLegend } from "@/components/tasks/priority-badge";
 import { TaskRow } from "./task-row";
 import { NewTaskForm } from "./new-task-form";
@@ -9,6 +11,7 @@ export default async function TasksPage() {
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
+  if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
   const tasks = await getTasksForBrand(ctx.brand.id);
   const todoTasks = tasks.filter((t) => t.status !== "done");
