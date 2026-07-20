@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
+// /reports is a public, unauthenticated shareable-report link (see
+// app/reports/[id]/page.tsx) - anyone with the link can view it, no login.
+const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/reports"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname.startsWith(path));
