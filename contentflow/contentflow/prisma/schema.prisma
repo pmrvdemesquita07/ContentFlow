@@ -140,6 +140,7 @@ model Workspace {
   tasks     Task[]
   creators  Creator[]
   contracts Contract[]
+  competitors Competitor[]
 
   @@map("workspaces")
 }
@@ -193,17 +194,6 @@ model Campaign {
   /// since we never fabricate a cost that wasn't actually entered.
   budget      Decimal?  @db.Decimal(10, 2)
   createdAt   DateTime  @default(now())
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  content   Content[]
-  media     Media[]
-  creators  CampaignCreator[]
-  contracts Contract[]
-
-  @@index([brandId])
-  @@map("campaigns")
-}
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -293,6 +283,40 @@ model Payment {
 
   @@index([contractId])
   @@map("payments")
+}
+
+/// A competitor account tracked manually - no platform grants third-party
+/// apps API access to another account's metrics, so this is deliberately
+/// hand-entered rather than synced, and stays honest about that in the UI.
+model Competitor {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  platform    SocialPlatform
+  handle      String
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  workspace Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  snapshots CompetitorSnapshot[]
+
+  @@index([workspaceId])
+  @@map("competitors")
+}
+
+/// One row per manual check-in on a competitor - followers/post count typed
+/// in by the user at whatever cadence they check, not on any sync schedule.
+model CompetitorSnapshot {
+  id             String   @id @default(uuid())
+  competitorId   String
+  followersCount Int
+  postsCount     Int?
+  capturedAt     DateTime @default(now())
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId, capturedAt])
+  @@map("competitor_snapshots")
 }
 
 model BrandVoice {
