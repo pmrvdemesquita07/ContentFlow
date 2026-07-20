@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getDiscoverableCreators } from "@/lib/discovery";
+import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SearchForm } from "./search-form";
@@ -25,6 +26,7 @@ export default async function DiscoverPage({
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
   if (ctx.workspace.type === "creator") redirect("/dashboard");
+  if (!planAtLeast(ctx.workspace.plan, "studio")) redirect("/settings?upgrade=1");
 
   const creators = await getDiscoverableCreators(params.niche);
 
