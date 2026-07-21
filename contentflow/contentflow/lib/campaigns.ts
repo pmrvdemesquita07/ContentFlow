@@ -113,12 +113,16 @@ export async function getCampaignDetail(campaignId: string, brandId: string) {
   };
 }
 
-/** Content not yet in any campaign - candidates to add to this one. */
+/**
+ * Content not yet in any campaign - candidates to add to this one. No cap:
+ * a hard `take` here silently starves out whichever platform syncs less
+ * often (its posts fall outside the window), which is exactly the "only
+ * TikTok shows up" bug this used to have.
+ */
 export function getUnassignedContent(brandId: string) {
   return prisma.content.findMany({
     where: { brandId, campaignId: null },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, type: true, status: true, thumbnailUrl: true },
-    take: 50,
+    select: { id: true, title: true, type: true, status: true, thumbnailUrl: true, platforms: true },
   });
 }
