@@ -1,5 +1,3 @@
-$ cat /home/claude/repo/contentflow/lib/social-sync.ts
-
 import { prisma } from "@/lib/db";
 import {
   getInstagramMedia,
