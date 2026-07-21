@@ -13,6 +13,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import type { SocialPlatform } from "@/lib/generated/prisma/enums";
+
+const PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  x: "X",
+  youtube: "YouTube",
+  linkedin: "LinkedIn",
+};
 
 type UnassignedContent = {
   id: string;
@@ -20,6 +30,7 @@ type UnassignedContent = {
   type: string;
   status: string;
   thumbnailUrl: string | null;
+  platforms: SocialPlatform[];
 };
 
 export function AssignContentForm({
@@ -31,14 +42,24 @@ export function AssignContentForm({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [platformFilter, setPlatformFilter] = useState<SocialPlatform | "all">("all");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const availablePlatforms = useMemo(() => {
+    const seen = new Set<SocialPlatform>();
+    for (const c of unassigned) for (const p of c.platforms) seen.add(p);
+    return Array.from(seen);
+  }, [unassigned]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return unassigned;
-    return unassigned.filter((c) => c.title.toLowerCase().includes(q));
-  }, [unassigned, query]);
+    return unassigned.filter((c) => {
+      const matchesQuery = !q || c.title.toLowerCase().includes(q);
+      const matchesPlatform = platformFilter === "all" || c.platforms.includes(platformFilter);
+      return matchesQuery && matchesPlatform;
+    });
+  }, [unassigned, query, platformFilter]);
 
   function assign(contentId: string) {
     setPendingId(contentId);
@@ -78,8 +99,41 @@ export function AssignContentForm({
             autoFocus
           />
         </div>
+        {availablePlatforms.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPlatformFilter("all")}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-xs font-medium",
+                platformFilter === "all"
+                  ? "border-primary bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All platforms
+            </button>
+            {availablePlatforms.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPlatformFilter(p)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs font-medium",
+                  platformFilter === p
+                    ? "border-primary bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {PLATFORM_LABELS[p]}
+              </button>
+            ))}
+          </div>
+        )}
         {filtered.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No posts match &quot;{query}&quot;.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No posts match {query ? `"${query}"` : "this filter"}.
+          </p>
         ) : (
           <div className="grid max-h-[60vh] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
             {filtered.map((c) => (
@@ -104,7 +158,12 @@ export function AssignContentForm({
                   </div>
                 )}
                 <p className="truncate text-xs font-medium">{c.title}</p>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  {c.platforms.map((p) => (
+                    <Badge key={p} variant="outline" className="shrink-0 text-[10px]">
+                      {PLATFORM_LABELS[p]}
+                    </Badge>
+                  ))}
                   <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
                     {c.type}
                   </Badge>
