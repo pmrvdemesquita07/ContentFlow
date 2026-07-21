@@ -176,6 +176,7 @@ model Workspace {
   opportunities Opportunity[]
   matchesAsCreator Match[] @relation("MatchCreatorWorkspace")
   reports Report[]
+  reportSubscriptions ReportSubscription[]
 
   @@map("workspaces")
 }
@@ -237,6 +238,7 @@ model Campaign {
   creators  CampaignCreator[]
   contracts Contract[]
   reports   Report[]
+  reportSubscriptions ReportSubscription[]
 
   @@index([brandId])
   @@map("campaigns")
@@ -411,9 +413,38 @@ model Report {
 
   campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  subscriptions ReportSubscription[]
 
   @@index([campaignId])
   @@map("reports")
+}
+
+enum ReportFrequency {
+  weekly
+  monthly
+}
+
+/// A standing subscription that re-sends the same report link by email on a
+/// schedule - separate from Report (a single link) since the link stays
+/// stable across sends rather than minting a new one every time.
+model ReportSubscription {
+  id             String          @id @default(uuid())
+  campaignId     String
+  workspaceId    String
+  reportId       String
+  recipientEmail String
+  frequency      ReportFrequency @default(weekly)
+  /// Null until the first send; the cron job compares this against
+  /// `frequency` to decide whether a subscription is due.
+  lastSentAt     DateTime?
+  createdAt      DateTime        @default(now())
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  report    Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("report_subscriptions")
 }
 
 model BrandVoice {
