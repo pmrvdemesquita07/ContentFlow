@@ -1,3 +1,5 @@
+$ cat /home/claude/repo/contentflow/lib/social-sync.ts
+
 import { prisma } from "@/lib/db";
 import {
   getInstagramMedia,
@@ -18,8 +20,46 @@ import {
   getTikTokVideos,
 } from "@/lib/tiktok";
 import { parseMentions } from "@/lib/text-parse";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { SocialAccountModel } from "@/lib/generated/prisma/models";
 import type { ContentType } from "@/lib/generated/prisma/enums";
+
+const STORAGE_MARKER = "/storage/v1/object/public/media/";
+
+/**
+ * Instagram's /stories endpoint only ever returns currently-active (<24h)
+ * stories - once one ages out, this sync never sees it again, so its
+ * thumbnailUrl can never be refreshed. But Instagram's own CDN URL for that
+ * thumbnail is itself signed/time-limited and will eventually 404 on its
+ * own, even though our Content/Metric rows are meant to last forever. The
+ * fix: while a story is still live (this function only ever runs on live
+ * ones), download its thumbnail once and re-host it in our own Storage
+ * bucket, so the copy we keep doesn't depend on Instagram continuing to
+ * serve it. Falls back to the live Instagram URL if the download fails,
+ * which is still strictly better than leaving thumbnailUrl empty.
+ */
+async function pinStoryThumbnail(sourceUrl: string | null, brandId: string, storyId: string) {
+  if (!sourceUrl) return null;
+  try {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) return sourceUrl;
+    const contentType = res.headers.get("content-type") ?? "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : contentType.includes("video") ? "mp4" : "jpg";
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const path = `${brandId}/story-thumbnails/${storyId}.${ext}`;
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.storage
+      .from("media")
+      .upload(path, bytes, { contentType, upsert: true });
+    if (error) return sourceUrl;
+
+    const { data } = supabase.storage.from("media").getPublicUrl(path);
+    return data.publicUrl;
+  } catch {
+    return sourceUrl;
+  }
+}
 
 function mapInstagramContentType(media: InstagramMedia): ContentType {
   if (media.media_product_type === "REELS") return "reel";
@@ -239,12 +279,22 @@ async function syncInstagramStories(
   const stories = await getInstagramStories(account.oauthAccessToken!).catch(() => []);
 
   for (const story of stories) {
-    const thumbnailUrl = story.thumbnail_url ?? story.media_url ?? null;
+    const liveThumbnailUrl = story.thumbnail_url ?? story.media_url ?? null;
     // Stories don't expose caption text via this API (mentions are visual
     // stickers, not text), so only location is available here, not mentions.
     const locationName = await getInstagramMediaLocation(story.id, account.oauthAccessToken!).catch(
       () => null
     );
+
+    const existing = await prisma.content.findUnique({
+      where: { brandId_externalId: { brandId: account.brandId, externalId: story.id } },
+      select: { thumbnailUrl: true },
+    });
+    const alreadyPinned = existing?.thumbnailUrl?.includes(STORAGE_MARKER) ?? false;
+    const thumbnailUrl = alreadyPinned
+      ? existing!.thumbnailUrl
+      : await pinStoryThumbnail(liveThumbnailUrl, account.brandId, story.id);
+
     const content = await prisma.content.upsert({
       where: { brandId_externalId: { brandId: account.brandId, externalId: story.id } },
       update: {
