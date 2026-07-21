@@ -9,6 +9,14 @@ export function getReportsForCampaign(campaignId: string, workspaceId: string) {
   });
 }
 
+/** Standing email subscriptions for a campaign, newest first. */
+export function getReportSubscriptionsForCampaign(campaignId: string, workspaceId: string) {
+  return prisma.reportSubscription.findMany({
+    where: { campaignId, workspaceId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 /**
  * The report id is the share token - no separate field, since a Prisma
  * uuid v4 is already unguessable. Returns null for a missing or revoked
