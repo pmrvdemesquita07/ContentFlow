@@ -118,7 +118,7 @@ export function getUnassignedContent(brandId: string) {
   return prisma.content.findMany({
     where: { brandId, campaignId: null },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, type: true, status: true },
+    select: { id: true, title: true, type: true, status: true, thumbnailUrl: true },
     take: 50,
   });
 }
