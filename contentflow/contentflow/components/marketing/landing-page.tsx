@@ -1,5 +1,3 @@
-$ cat /home/claude/repo/contentflow/components/marketing/landing-page.tsx
-
 import Link from "next/link";
 import {
   LayoutDashboard,
