@@ -1,3 +1,5 @@
+$ cat /home/claude/repo/contentflow/components/marketing/landing-page.tsx
+
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -46,6 +48,11 @@ const FEATURES = [
     body: "Gera um link de relatório de campanha só-leitura para enviar a um cliente, sem lhe dar acesso à tua conta.",
   },
 ];
+
+// Ficheiros servidos a partir de public/marketing/ (ver instruções de upload).
+const DEMO_VIDEO_URL = "/marketing/demo.mp4";
+const LAUNCH_VIDEO_URL = "/marketing/launch.mp4";
+const PROMO_VIDEO_URL = "/marketing/promo.mp4";
 
 const PLANS = [
   {
@@ -126,26 +133,77 @@ export function LandingPage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="mx-auto max-w-6xl px-4 pb-20 pt-20 sm:pt-28">
-          <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="outline" className="mx-auto mb-6">
-              Para criadores, marcas e agências
-            </Badge>
-            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-              Gere o teu conteúdo, campanhas e{" "}
-              <span className="text-gradient-brand">contratos</span> num só sítio
-            </h1>
-            <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-              O SocialFlow junta análise de desempenho, ROI de campanhas, contratos, relatórios e
-              um marketplace de oportunidades — para quem já não aguenta gerir tudo em folhas de
-              cálculo e DMs.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg">
-                <Link href="/signup">Começar grátis</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/login">Já tenho conta</Link>
-              </Button>
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div className="mx-auto max-w-xl text-center lg:mx-0 lg:text-left">
+              <Badge variant="outline" className="mx-auto mb-6 lg:mx-0">
+                Para criadores, marcas e agências
+              </Badge>
+              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+                Gere o teu conteúdo, campanhas e{" "}
+                <span className="text-gradient-brand">contratos</span> num só sítio
+              </h1>
+              <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground lg:mx-0">
+                O SocialFlow junta análise de desempenho, ROI de campanhas, contratos, relatórios e
+                um marketplace de oportunidades — para quem já não aguenta gerir tudo em folhas de
+                cálculo e DMs.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                <Button asChild size="lg">
+                  <Link href="/signup">Começar grátis</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/login">Já tenho conta</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border shadow-xl lg:max-w-none">
+              <div className="flex items-center gap-1.5 border-b bg-muted/50 px-3 py-2">
+                <span className="size-2.5 rounded-full bg-destructive/60" />
+                <span className="size-2.5 rounded-full bg-yellow-500/60" />
+                <span className="size-2.5 rounded-full bg-green-500/60" />
+              </div>
+              <video
+                className="aspect-video w-full bg-muted object-cover"
+                src={DEMO_VIDEO_URL}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Vê em ação */}
+        <section className="border-t bg-muted/30 py-20">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight">Vê o SocialFlow em ação</h2>
+              <p className="mt-3 text-muted-foreground">
+                Direto da app, sem guiões — assim é mesmo a usar.
+              </p>
+            </div>
+            <div className="mx-auto mt-12 grid max-w-xl gap-8 sm:grid-cols-2">
+              {[
+                { url: LAUNCH_VIDEO_URL, label: "Lançamento" },
+                { url: PROMO_VIDEO_URL, label: "Promo" },
+              ].map((v) => (
+                <div key={v.label} className="mx-auto flex flex-col items-center gap-3">
+                  <div className="w-full max-w-[220px] overflow-hidden rounded-[2rem] border-8 border-foreground/90 bg-foreground/90 shadow-xl">
+                    <video
+                      className="aspect-9/16 w-full rounded-[1.1rem] bg-muted object-cover"
+                      src={v.url}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">{v.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </section>
