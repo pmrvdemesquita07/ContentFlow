@@ -1,61 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  LayoutDashboard,
-  Lightbulb,
-  FileText,
-  Calendar,
-  SquareCheck,
-  Share2,
-  BarChart3,
-  Sparkles,
-  Image,
-  Inbox,
-  Settings,
-  Megaphone,
-  Building2,
-  Users,
-  FileSignature,
-  Radar,
-  Compass,
-  Briefcase,
-} from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getSearchIndex } from "@/lib/search";
-import { planAtLeast } from "@/lib/plan";
-import type { Plan } from "@/lib/generated/prisma/enums";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { BrandSwitcher } from "@/components/workspace/brand-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandSearch } from "@/components/search/command-search";
-
-const ACTIVE_LINKS: { href: string; label: string; icon: typeof LayoutDashboard; minPlan?: Plan }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/posts", label: "Posts", icon: FileText },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/tasks", label: "Tasks", icon: SquareCheck, minPlan: "pro" },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone, minPlan: "pro" },
-  { href: "/opportunities", label: "Opportunities", icon: Briefcase, minPlan: "pro" },
-  { href: "/media", label: "Media", icon: Image },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/mailbox", label: "Mailbox", icon: Inbox, minPlan: "pro" },
-  { href: "/social-hub", label: "Social Hub", icon: Share2 },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
-
-const CREATORS_LINK = { href: "/creators", label: "Creators", icon: Users };
-const CONTRACTS_LINK = { href: "/contracts", label: "Contracts", icon: FileSignature };
-const COMPETITORS_LINK = { href: "/competitors", label: "Competitors", icon: Radar };
-const DISCOVER_LINK = { href: "/discover", label: "Discover creators", icon: Compass };
-const AGENCY_LINK = { href: "/agency", label: "Agency roster", icon: Building2 };
-
-const SOON_LINKS = [
-  { label: "Ideas Bank", icon: Lightbulb },
-  { label: "Assistants", icon: Sparkles },
-];
+import { SidebarNav } from "@/components/app-shell/sidebar-nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -80,77 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="mb-6">
           <CommandSearch index={searchIndex} />
         </div>
-        <nav className="flex flex-1 flex-col gap-0.5">
-          {ACTIVE_LINKS.filter(
-            (link) => !link.minPlan || planAtLeast(ctx.workspace.plan, link.minPlan)
-          ).map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              <link.icon className="size-4 text-muted-foreground" />
-              {link.label}
-            </Link>
-          ))}
-          {ctx.workspace.type !== "creator" && planAtLeast(ctx.workspace.plan, "pro") && (
-            <Link
-              href={CREATORS_LINK.href}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              <CREATORS_LINK.icon className="size-4 text-muted-foreground" />
-              {CREATORS_LINK.label}
-            </Link>
-          )}
-          {ctx.workspace.type !== "creator" && planAtLeast(ctx.workspace.plan, "pro") && (
-            <Link
-              href={CONTRACTS_LINK.href}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              <CONTRACTS_LINK.icon className="size-4 text-muted-foreground" />
-              {CONTRACTS_LINK.label}
-            </Link>
-          )}
-          {ctx.workspace.type !== "creator" && planAtLeast(ctx.workspace.plan, "studio") && (
-            <Link
-              href={DISCOVER_LINK.href}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              <DISCOVER_LINK.icon className="size-4 text-muted-foreground" />
-              {DISCOVER_LINK.label}
-            </Link>
-          )}
-          {planAtLeast(ctx.workspace.plan, "pro") && (
-            <Link
-              href={COMPETITORS_LINK.href}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              <COMPETITORS_LINK.icon className="size-4 text-muted-foreground" />
-              {COMPETITORS_LINK.label}
-            </Link>
-          )}
-          {ctx.workspace.type === "agency" && planAtLeast(ctx.workspace.plan, "studio") && (
-            <Link
-              href={AGENCY_LINK.href}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              <AGENCY_LINK.icon className="size-4 text-muted-foreground" />
-              {AGENCY_LINK.label}
-            </Link>
-          )}
-          <div className="mt-4 mb-1 px-2.5 text-xs font-medium text-muted-foreground">
-            Coming soon
-          </div>
-          {SOON_LINKS.map((link) => (
-            <div
-              key={link.label}
-              className="flex cursor-not-allowed items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground/60"
-            >
-              <link.icon className="size-4" />
-              {link.label}
-            </div>
-          ))}
-        </nav>
+        <SidebarNav plan={ctx.workspace.plan} workspaceType={ctx.workspace.type} />
         {ctx.workspace.plan === "starter" && (
           <Link
             href="/settings"
