@@ -51,6 +51,7 @@ const FEATURES = [
 const DEMO_VIDEO_URL = "/marketing/demo.mp4.mp4";
 const LAUNCH_VIDEO_URL = "/marketing/launch.mp4.mp4";
 const PROMO_VIDEO_URL = "/marketing/promo.mp4.mp4";
+const TUTORIAL_VIDEO_URL = "/marketing/tutorial.mp4.mp4";
 
 const PLANS = [
   {
@@ -167,6 +168,26 @@ export function LandingPage() {
                 muted
                 loop
                 playsInline
+                preload="metadata"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Como funciona */}
+        <section className="border-t py-20">
+          <div className="mx-auto max-w-4xl px-4">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight">Como funciona</h2>
+              <p className="mt-3 text-muted-foreground">
+                Um tour rápido pela app — três minutos e já sabes onde está tudo.
+              </p>
+            </div>
+            <div className="mx-auto mt-10 overflow-hidden rounded-2xl border shadow-xl">
+              <video
+                className="aspect-video w-full bg-muted"
+                src={TUTORIAL_VIDEO_URL}
+                controls
                 preload="metadata"
               />
             </div>
