@@ -48,9 +48,9 @@ const FEATURES = [
 ];
 
 // Ficheiros servidos a partir de public/marketing/ (ver instruções de upload).
-const DEMO_VIDEO_URL = "/marketing/demo.mp4";
-const LAUNCH_VIDEO_URL = "/marketing/launch.mp4";
-const PROMO_VIDEO_URL = "/marketing/promo.mp4";
+const DEMO_VIDEO_URL = "/marketing/demo.mp4.mp4";
+const LAUNCH_VIDEO_URL = "/marketing/launch.mp4.mp4";
+const PROMO_VIDEO_URL = "/marketing/promo.mp4.mp4";
 
 const PLANS = [
   {
