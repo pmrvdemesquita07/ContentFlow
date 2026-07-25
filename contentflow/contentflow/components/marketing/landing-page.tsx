@@ -62,7 +62,7 @@ const PLANS = [
     tagline: "Para começar a testar, sem cartão de crédito.",
     features: [
       "1 workspace",
-      "Até 2 contas sociais ligadas",
+      "1 conta social ligada (Instagram ou TikTok)",
       "Dashboard, calendário e ideias",
       "Relatórios partilháveis",
     ],
