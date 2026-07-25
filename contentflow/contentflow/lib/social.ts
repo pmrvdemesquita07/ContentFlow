@@ -5,6 +5,21 @@ export function getSocialAccountsForBrand(brandId: string) {
   return prisma.socialAccount.findMany({ where: { brandId } });
 }
 
+/**
+ * Starter is capped at one connected account (Instagram or TikTok) for the
+ * whole workspace, not per-brand, so this counts across every brand under
+ * it - a Starter workspace with 3 brands still can't connect 3 accounts.
+ */
+export function getConnectedSocialAccountCount(workspaceId: string, excludePlatform?: SocialPlatform) {
+  return prisma.socialAccount.count({
+    where: {
+      status: "connected",
+      brand: { workspaceId },
+      ...(excludePlatform ? { platform: { not: excludePlatform } } : {}),
+    },
+  });
+}
+
 const EMPTY_PLATFORM_TOTALS = {
   posts: 0,
   likes: 0,
