@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
-import { getSocialHubData } from "@/lib/social";
+import { getSocialHubData, getConnectedSocialAccountCount } from "@/lib/social";
 import { getCommentsForBrand, getMentionsFromComments } from "@/lib/comments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,10 @@ export default async function SocialHubPage({
   const accountsByPlatform = new Map(accounts.map((a) => [a.platform, a]));
   const platformTotalsByPlatform = new Map(platformTotals.map((p) => [p.platform, p]));
 
+  const isStarter = ctx.workspace.plan === "starter";
+  const connectedCount = isStarter ? await getConnectedSocialAccountCount(ctx.workspace.id) : 0;
+  const starterLimitReached = isStarter && connectedCount >= 1;
+
   const [comments, mentions] = await Promise.all([
     getCommentsForBrand(ctx.brand.id),
     getMentionsFromComments(ctx.brand.id),
@@ -53,16 +57,27 @@ export default async function SocialHubPage({
         <h1 className="text-2xl font-semibold">Social Hub</h1>
         <p className="text-sm text-muted-foreground">
           Connect an account and its real metrics start flowing into Analytics and Dashboard.
+          {isStarter && " Starter includes 1 connected account (Instagram or TikTok)."}
         </p>
       </div>
 
       {connected && (
         <p className="text-sm text-success">Connected {connected} successfully.</p>
       )}
-      {error && (
+      {error === "starter_limit" ? (
         <p className="text-sm text-destructive">
-          Something went wrong connecting that account ({error}). Try again.
+          Starter is limited to 1 connected account - disconnect the other one first, or{" "}
+          <a href="/settings" className="underline">
+            upgrade to Pro
+          </a>{" "}
+          for unlimited accounts.
         </p>
+      ) : (
+        error && (
+          <p className="text-sm text-destructive">
+            Something went wrong connecting that account ({error}). Try again.
+          </p>
+        )
       )}
 
       {accounts.length > 0 && (
@@ -123,6 +138,10 @@ export default async function SocialHubPage({
                       <SyncButton id={account.id} />
                       <DisconnectButton id={account.id} />
                     </div>
+                  ) : platform.live && starterLimitReached ? (
+                    <Button size="sm" variant="outline" disabled title="Starter is limited to 1 connected account">
+                      Connect
+                    </Button>
                   ) : platform.live ? (
                     <Button size="sm" asChild>
                       <a href={platform.connectPath}>Connect</a>
