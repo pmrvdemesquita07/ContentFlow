@@ -1,0 +1,15 @@
+$ cat "/home/claude/repo/contentflow/app/(app)/media-kit/export-button.tsx"
+
+"use client";
+
+import { Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export function ExportMediaKitButton() {
+  return (
+    <Button variant="outline" size="sm" className="print-hide" onClick={() => window.print()}>
+      <Printer className="size-4" />
+      Export PDF
+    </Button>
+  );
+}
