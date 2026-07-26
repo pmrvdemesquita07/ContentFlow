@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import {
   getContractsForWorkspace,
+  getContractsForCreatorWorkspace,
   getCreatorsForWorkspaceOptions,
   getCampaignsForWorkspaceOptions,
   paidTotal,
@@ -21,12 +22,69 @@ const STATUS_VARIANT: Record<string, "outline" | "success" | "secondary"> = {
   cancelled: "outline",
 };
 
-export default async function ContractsPage() {
+export default async function ContractsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ creatorId?: string; title?: string }>;
+}) {
+  const params = await searchParams;
+
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx) return null;
-  if (ctx.workspace.type === "creator") redirect("/dashboard");
   if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
+
+  if (ctx.workspace.type === "creator") {
+    const contracts = await getContractsForCreatorWorkspace(ctx.workspace.id);
+
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Contracts</h1>
+          <p className="text-sm text-muted-foreground">
+            Agreements linked to matches you&apos;ve accepted from brands and agencies.
+          </p>
+        </div>
+
+        {contracts.length === 0 ? (
+          <Card>
+            <CardContent className="pt-5">
+              <p className="text-sm text-muted-foreground">
+                No contracts yet - these show up once a brand or agency creates one after
+                accepting your application.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex flex-col divide-y rounded-lg border">
+            {contracts.map((contract) => (
+              <Link
+                key={contract.id}
+                href={`/contracts/${contract.id}`}
+                className="flex items-center gap-3 p-4 hover:bg-accent/50"
+              >
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{contract.title}</span>
+                    <Badge variant={STATUS_VARIANT[contract.status] ?? "outline"} className="capitalize">
+                      {contract.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{contract.workspace.name}</p>
+                </div>
+                <p className="shrink-0 text-sm font-semibold">
+                  {Number(contract.amount).toLocaleString(undefined, {
+                    style: "currency",
+                    currency: contract.currency,
+                  })}
+                </p>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const [contracts, creators, campaigns] = await Promise.all([
     getContractsForWorkspace(ctx.workspace.id),
@@ -92,7 +150,12 @@ export default async function ContractsPage() {
       <Card className="max-w-2xl">
         <CardContent className="pt-5">
           <h2 className="mb-3 text-sm font-semibold">New contract</h2>
-          <NewContractForm creators={creators} campaigns={campaigns} />
+          <NewContractForm
+            creators={creators}
+            campaigns={campaigns}
+            defaultCreatorId={params.creatorId}
+            defaultTitle={params.title}
+          />
         </CardContent>
       </Card>
     </div>

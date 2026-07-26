@@ -2,14 +2,24 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
-import { getContractDetail, paidTotal } from "@/lib/contracts";
+import { getContractDetail, getContractDetailForCreator, paidTotal } from "@/lib/contracts";
 import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ReviewSection } from "@/components/reviews/review-section";
 import { ContractStatusSelect } from "./contract-status-select";
 import { PaymentStatusSelect } from "./payment-status-select";
 import { AddPaymentForm } from "./add-payment-form";
 import { DeleteContractButton } from "./delete-contract-button";
 import { DeletePaymentButton } from "./delete-payment-button";
+
+const STATUS_VARIANT: Record<string, "outline" | "success" | "secondary"> = {
+  draft: "outline",
+  sent: "secondary",
+  signed: "secondary",
+  completed: "success",
+  cancelled: "outline",
+};
 
 export default async function ContractDetailPage({
   params,
@@ -23,6 +33,75 @@ export default async function ContractDetailPage({
   if (!ctx) return null;
   if (!planAtLeast(ctx.workspace.plan, "pro")) redirect("/settings?upgrade=1");
 
+  if (ctx.workspace.type === "creator") {
+    const contract = await getContractDetailForCreator(id, ctx.workspace.id);
+    if (!contract) notFound();
+
+    const total = Number(contract.amount);
+    const currencyFmt = (n: number) =>
+      n.toLocaleString(undefined, { style: "currency", currency: contract.currency });
+    const agencyReview = contract.reviews.find((r) => r.reviewerRole === "agency");
+    const creatorReview = contract.reviews.find((r) => r.reviewerRole === "creator");
+
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-semibold">{contract.title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {contract.workspace.name}
+            {contract.campaign && (
+              <>
+                {" - "}
+                <Link href={`/campaigns/${contract.campaign.id}`} className="hover:underline">
+                  {contract.campaign.name}
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="pt-5">
+              <p className="text-xs text-muted-foreground">Contract total</p>
+              <p className="text-2xl font-semibold">{currencyFmt(total)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-5">
+              <p className="text-xs text-muted-foreground">Status</p>
+              <Badge variant={STATUS_VARIANT[contract.status] ?? "outline"} className="mt-1 capitalize">
+                {contract.status}
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+
+        {contract.status === "completed" && (
+          <Card>
+            <CardContent className="flex flex-col gap-5 pt-5">
+              <h2 className="text-sm font-semibold">Reviews</h2>
+              <ReviewSection
+                contractId={contract.id}
+                role="creator"
+                label={`Your review of ${contract.workspace.name}`}
+                review={creatorReview}
+                canReview
+              />
+              <ReviewSection
+                contractId={contract.id}
+                role="agency"
+                label={`${contract.workspace.name}'s review of you`}
+                review={agencyReview}
+                canReview={false}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
   const contract = await getContractDetail(id, ctx.workspace.id);
   if (!contract) notFound();
 
@@ -31,6 +110,8 @@ export default async function ContractDetailPage({
   const outstanding = total - paid;
   const currencyFmt = (n: number) =>
     n.toLocaleString(undefined, { style: "currency", currency: contract.currency });
+  const agencyReview = contract.reviews.find((r) => r.reviewerRole === "agency");
+  const creatorReview = contract.reviews.find((r) => r.reviewerRole === "creator");
 
   return (
     <div className="flex flex-col gap-6">
@@ -124,6 +205,28 @@ export default async function ContractDetailPage({
           <AddPaymentForm contractId={contract.id} />
         </CardContent>
       </Card>
+
+      {contract.status === "completed" && (
+        <Card>
+          <CardContent className="flex flex-col gap-5 pt-5">
+            <h2 className="text-sm font-semibold">Reviews</h2>
+            <ReviewSection
+              contractId={contract.id}
+              role="agency"
+              label={`Your review of ${contract.creator.name}`}
+              review={agencyReview}
+              canReview
+            />
+            <ReviewSection
+              contractId={contract.id}
+              role="creator"
+              label={`${contract.creator.name}'s review of you`}
+              review={creatorReview}
+              canReview={false}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

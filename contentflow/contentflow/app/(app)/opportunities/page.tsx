@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { NewOpportunityForm } from "./new-opportunity-form";
 import { ApplyForm } from "./apply-form";
 import { WithdrawButton } from "./withdraw-button";
+import { InviteResponseButtons } from "./invite-response-buttons";
 import { SearchForm } from "./search-form";
 import type { SocialPlatform } from "@/lib/generated/prisma/enums";
 
@@ -63,8 +64,8 @@ export default async function OpportunitiesPage({
         <div>
           <h1 className="text-2xl font-semibold">Opportunities</h1>
           <p className="text-sm text-muted-foreground">
-            Briefs posted by brands and agencies. Apply directly - no in-app messaging beyond your
-            pitch, contact continues by email once accepted.
+            Briefs posted by brands and agencies. Apply directly - once accepted, a conversation
+            opens up here so you don&apos;t have to swap emails.
           </p>
         </div>
 
@@ -134,9 +135,18 @@ export default async function OpportunitiesPage({
                       <Badge variant={MATCH_STATUS_VARIANT[m.status] ?? "outline"} className="capitalize">
                         {m.status}
                       </Badge>
-                      {(m.status === "applied" || m.status === "invited") && (
-                        <WithdrawButton matchId={m.id} />
+                      {m.status === "accepted" && m.thread && (
+                        <Link
+                          href={`/opportunities/threads/${m.id}`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          Message
+                        </Link>
                       )}
+                      {m.status === "invited" && (
+                        <InviteResponseButtons matchId={m.id} opportunityId={m.opportunity.id} />
+                      )}
+                      {m.status === "applied" && <WithdrawButton matchId={m.id} />}
                     </div>
                   </div>
                 ))}

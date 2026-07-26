@@ -130,6 +130,8 @@ model User {
   memberships WorkspaceMember[]
   tasks     Task[]
   content   Content[]
+  threadMessages ThreadMessage[]
+  reviews   Review[]
 
   @@map("users")
 }
@@ -175,6 +177,7 @@ model Workspace {
   competitors Competitor[]
   opportunities Opportunity[]
   matchesAsCreator Match[] @relation("MatchCreatorWorkspace")
+  sourcedCreators Creator[] @relation("CreatorSourceWorkspace")
   reports Report[]
   reportSubscriptions ReportSubscription[]
 
@@ -257,12 +260,20 @@ model Creator {
   tiktokHandle    String?
   notes           String?  @db.Text
   createdAt       DateTime @default(now())
+  /// Set only when this roster row was auto-created from an accepted
+  /// marketplace Match (see acceptMatch) - links back to the creator's own
+  /// login-capable Workspace, which is what lets them see this Contract and
+  /// write their side of the Review. Null for roster contacts added by hand,
+  /// since those don't correspond to any real marketplace account.
+  sourceWorkspaceId String?
 
-  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  campaigns CampaignCreator[]
-  contracts Contract[]
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceWorkspace Workspace?        @relation("CreatorSourceWorkspace", fields: [sourceWorkspaceId], references: [id], onDelete: SetNull)
+  campaigns       CampaignCreator[]
+  contracts       Contract[]
 
   @@index([workspaceId])
+  @@index([sourceWorkspaceId])
   @@map("creators")
 }
 
@@ -301,6 +312,7 @@ model Contract {
   creator   Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   payments  Payment[]
+  reviews   Review[]
 
   @@index([workspaceId])
   @@index([creatorId])
@@ -379,9 +391,10 @@ model Opportunity {
   @@map("opportunities")
 }
 
-/// A creator workspace's application to an Opportunity. No in-app
-/// messaging beyond the initial pitch - once accepted, contact continues
-/// externally, same as Discover.
+/// A creator workspace's application to an Opportunity (or an agency's
+/// invitation, when status starts at "invited" instead of "applied"). A
+/// MatchThread only ever gets created once this reaches "accepted" - see
+/// MatchThread's own comment for why.
 model Match {
   id                 String      @id @default(uuid())
   opportunityId      String
@@ -391,13 +404,70 @@ model Match {
   createdAt          DateTime    @default(now())
   respondedAt        DateTime?
 
-  opportunity      Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  creatorWorkspace Workspace   @relation("MatchCreatorWorkspace", fields: [creatorWorkspaceId], references: [id], onDelete: Cascade)
+  opportunity      Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  creatorWorkspace Workspace    @relation("MatchCreatorWorkspace", fields: [creatorWorkspaceId], references: [id], onDelete: Cascade)
+  thread           MatchThread?
 
   @@unique([opportunityId, creatorWorkspaceId])
   @@index([opportunityId])
   @@index([creatorWorkspaceId])
   @@map("matches")
+}
+
+/// One thread per accepted Match - created lazily right when a Match
+/// transitions to "accepted" (see updateMatchStatus), never before. Creating
+/// it any earlier would let either side message a stranger who hasn't been
+/// vetted/accepted yet, which is exactly the spam surface this design avoids.
+model MatchThread {
+  id        String   @id @default(uuid())
+  matchId   String   @unique
+  createdAt DateTime @default(now())
+
+  match    Match           @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  messages ThreadMessage[]
+
+  @@map("match_threads")
+}
+
+model ThreadMessage {
+  id        String   @id @default(uuid())
+  threadId  String
+  senderId  String   @db.Uuid
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  thread MatchThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@map("thread_messages")
+}
+
+enum ReviewerRole {
+  agency
+  creator
+}
+
+/// A completed Contract's two-sided rating - one row per side (agency rating
+/// the creator, creator rating the agency), never editable once written so
+/// the aggregate stays trustworthy (same principle as Airbnb-style
+/// marketplaces: a review is a permanent record, not a draft). The reviewee
+/// is implicit from reviewerRole: "agency" rates the contract's Creator,
+/// "creator" rates the contract's Workspace.
+model Review {
+  id             String       @id @default(uuid())
+  contractId     String
+  reviewerRole   ReviewerRole
+  reviewerUserId String       @db.Uuid
+  rating         Int
+  comment        String?      @db.Text
+  createdAt      DateTime     @default(now())
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  reviewer User     @relation(fields: [reviewerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, reviewerRole])
+  @@map("reviews")
 }
 
 /// A public, unauthenticated shareable snapshot of a campaign's real

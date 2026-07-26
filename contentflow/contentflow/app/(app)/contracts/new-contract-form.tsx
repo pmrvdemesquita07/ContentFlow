@@ -11,9 +11,13 @@ type Option = { id: string; name: string };
 export function NewContractForm({
   creators,
   campaigns,
+  defaultCreatorId,
+  defaultTitle,
 }: {
   creators: Option[];
   campaigns: Option[];
+  defaultCreatorId?: string;
+  defaultTitle?: string;
 }) {
   const [state, formAction, pending] = useActionState(createContract, undefined);
   const formRef = useRef<HTMLFormElement>(null);
@@ -43,6 +47,7 @@ export function NewContractForm({
             id="creatorId"
             name="creatorId"
             required
+            defaultValue={defaultCreatorId ?? ""}
             className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <option value="">Select a creator...</option>
@@ -71,7 +76,13 @@ export function NewContractForm({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="title">Title</Label>
-        <Input id="title" name="title" placeholder="e.g. Summer Launch - 3 Reels" required />
+        <Input
+          id="title"
+          name="title"
+          placeholder="e.g. Summer Launch - 3 Reels"
+          defaultValue={defaultTitle}
+          required
+        />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">

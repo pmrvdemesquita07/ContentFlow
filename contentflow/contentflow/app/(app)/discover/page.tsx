@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
+import { Star } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getDiscoverableCreators } from "@/lib/discovery";
+import { getOpenOpportunitiesForWorkspace } from "@/lib/opportunities";
 import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SearchForm } from "./search-form";
+import { InviteButton } from "./invite-button";
 
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: "Instagram",
@@ -28,15 +31,18 @@ export default async function DiscoverPage({
   if (ctx.workspace.type === "creator") redirect("/dashboard");
   if (!planAtLeast(ctx.workspace.plan, "studio")) redirect("/settings?upgrade=1");
 
-  const creators = await getDiscoverableCreators(params.niche);
+  const [creators, openOpportunities] = await Promise.all([
+    getDiscoverableCreators(params.niche),
+    getOpenOpportunitiesForWorkspace(ctx.workspace.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Discover creators</h1>
         <p className="text-sm text-muted-foreground">
-          Creators who opted in to be found. Contact happens outside the app, using the email
-          they published - there&apos;s no in-app messaging.
+          Creators who opted in to be found. Email them directly, or invite them straight into one
+          of your open opportunities - accepting opens an in-app conversation.
         </p>
       </div>
 
@@ -61,6 +67,15 @@ export default async function DiscoverPage({
                   <h2 className="font-medium">{c.name}</h2>
                   {c.niche && <Badge variant="outline">{c.niche}</Badge>}
                 </div>
+                {c.averageRating !== null && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Star className="size-3.5 fill-primary text-primary" />
+                    <span className="font-medium text-foreground">{c.averageRating.toFixed(1)}</span>
+                    <span>
+                      ({c.ratingCount} review{c.ratingCount === 1 ? "" : "s"} from agencies)
+                    </span>
+                  </div>
+                )}
                 {c.bio && <p className="text-sm text-muted-foreground">{c.bio}</p>}
                 {c.accounts.length > 0 && (
                   <div className="flex flex-col gap-1">
@@ -82,6 +97,7 @@ export default async function DiscoverPage({
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">No contact email published.</p>
                 )}
+                <InviteButton creatorWorkspaceId={c.id} opportunities={openOpportunities} />
               </CardContent>
             </Card>
           ))}

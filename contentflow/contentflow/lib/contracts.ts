@@ -19,6 +19,33 @@ export function getContractDetail(contractId: string, workspaceId: string) {
       creator: true,
       campaign: { select: { id: true, name: true } },
       payments: { orderBy: { createdAt: "asc" } },
+      reviews: true,
+    },
+  });
+}
+
+/** A creator workspace's own contracts - only ones auto-linked via an
+ * accepted marketplace Match (Creator.sourceWorkspaceId), never an agency's
+ * hand-entered roster contact that happens to share a name. */
+export function getContractsForCreatorWorkspace(creatorWorkspaceId: string) {
+  return prisma.contract.findMany({
+    where: { creator: { sourceWorkspaceId: creatorWorkspaceId } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      workspace: { select: { id: true, name: true } },
+      campaign: { select: { id: true, name: true } },
+      reviews: true,
+    },
+  });
+}
+
+export function getContractDetailForCreator(contractId: string, creatorWorkspaceId: string) {
+  return prisma.contract.findFirst({
+    where: { id: contractId, creator: { sourceWorkspaceId: creatorWorkspaceId } },
+    include: {
+      workspace: { select: { id: true, name: true } },
+      campaign: { select: { id: true, name: true } },
+      reviews: true,
     },
   });
 }

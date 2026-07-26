@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getOpportunityDetail } from "@/lib/opportunities";
+import { prisma } from "@/lib/db";
 import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +35,20 @@ export default async function OpportunityDetailPage({
 
   const opportunity = await getOpportunityDetail(id, ctx.workspace.id);
   if (!opportunity) notFound();
+
+  // Accepting a match auto-creates a roster Creator (see updateMatchStatus) -
+  // this looks it up so "Create contract" can deep-link straight to it
+  // instead of making the agency find the right creator in a dropdown again.
+  const acceptedCreatorWorkspaceIds = opportunity.matches
+    .filter((m) => m.status === "accepted")
+    .map((m) => m.creatorWorkspaceId);
+  const linkedCreators = acceptedCreatorWorkspaceIds.length
+    ? await prisma.creator.findMany({
+        where: { workspaceId: ctx.workspace.id, sourceWorkspaceId: { in: acceptedCreatorWorkspaceIds } },
+        select: { id: true, sourceWorkspaceId: true },
+      })
+    : [];
+  const creatorIdByWorkspaceId = new Map(linkedCreators.map((c) => [c.sourceWorkspaceId, c.id]));
 
   const budget =
     opportunity.budget !== null
@@ -109,13 +125,31 @@ export default async function OpportunityDetailPage({
                   {match.message && (
                     <p className="text-sm text-muted-foreground">&ldquo;{match.message}&rdquo;</p>
                   )}
-                  {match.status === "accepted" && match.creatorWorkspace.discoveryContactEmail && (
-                    <a
-                      href={`mailto:${match.creatorWorkspace.discoveryContactEmail}`}
-                      className="text-sm font-medium text-primary hover:underline"
-                    >
-                      Contact {match.creatorWorkspace.discoveryContactEmail}
-                    </a>
+                  {match.status === "accepted" && (
+                    <div className="flex items-center gap-3">
+                      {match.creatorWorkspace.discoveryContactEmail && (
+                        <a
+                          href={`mailto:${match.creatorWorkspace.discoveryContactEmail}`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          Contact {match.creatorWorkspace.discoveryContactEmail}
+                        </a>
+                      )}
+                      {match.thread && (
+                        <Link
+                          href={`/opportunities/threads/${match.id}`}
+                          className="text-sm font-medium text-primary hover:underline"
+                        >
+                          Message
+                        </Link>
+                      )}
+                      <Link
+                        href={`/contracts?creatorId=${creatorIdByWorkspaceId.get(match.creatorWorkspaceId) ?? ""}&title=${encodeURIComponent(opportunity.title)}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Create contract
+                      </Link>
+                    </div>
                   )}
                 </div>
               ))}

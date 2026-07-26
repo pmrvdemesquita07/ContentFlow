@@ -25,6 +25,7 @@ export async function getOpportunityDetail(opportunityId: string, workspaceId: s
               discoveryContactEmail: true,
             },
           },
+          thread: { select: { id: true } },
         },
       },
     },
@@ -51,6 +52,16 @@ export function getMatchesForCreatorWorkspace(creatorWorkspaceId: string) {
     orderBy: { createdAt: "desc" },
     include: {
       opportunity: { include: { workspace: { select: { id: true, name: true } } } },
+      thread: { select: { id: true } },
     },
+  });
+}
+
+/** A brand/agency's own open briefs, for the "invite to opportunity" picker on Discover. */
+export function getOpenOpportunitiesForWorkspace(workspaceId: string) {
+  return prisma.opportunity.findMany({
+    where: { workspaceId, status: "open" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, title: true },
   });
 }
