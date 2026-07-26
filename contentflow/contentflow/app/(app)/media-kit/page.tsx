@@ -64,7 +64,6 @@ export default async function MediaKitPage() {
     getBrandAudienceDemographics(ctx.brand.id),
   ]);
 
-  const primary = connected[0];
   const totalFollowers = connected.reduce((sum, a) => sum + (a.followersCount ?? 0), 0);
   const topPosts = analytics.perPost.slice(0, 5);
   const bio =
@@ -84,34 +83,43 @@ export default async function MediaKitPage() {
         <ExportMediaKitButton />
       </div>
 
-      {/* Page 1 - Cover */}
-      <section className="print-page flex min-h-[70vh] flex-col items-center justify-center gap-6 rounded-lg border bg-card p-12 text-center">
-        <Logo size="sm" />
-        <Avatar className="size-32 border">
-          <AvatarImage src={primary.profilePictureUrl ?? undefined} alt="" />
-          <AvatarFallback className="text-2xl">
-            {ctx.brand.name.slice(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h2 className="font-display text-3xl font-extrabold tracking-tight">{ctx.brand.name}</h2>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-            {connected.map((a) => (
-              <Badge key={a.id} variant="outline">
-                {a.externalUsername ? `@${a.externalUsername}` : PLATFORM_LABELS[a.platform]} ·{" "}
-                {PLATFORM_LABELS[a.platform]}
+      {/* Page 1 - one cover per connected account, each with that
+          platform's own profile photo and follower count - never a
+          blended photo/number across accounts that look different. */}
+      {connected.map((account) => (
+        <section
+          key={account.id}
+          className="print-page flex min-h-[70vh] flex-col items-center justify-center gap-6 rounded-lg border bg-card p-12 text-center"
+        >
+          <Logo size="sm" />
+          <Avatar className="size-32 border">
+            <AvatarImage src={account.profilePictureUrl ?? undefined} alt="" />
+            <AvatarFallback className="text-2xl">
+              {ctx.brand.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h2 className="font-display text-3xl font-extrabold tracking-tight">
+              {ctx.brand.name}
+            </h2>
+            <div className="mt-2 flex justify-center">
+              <Badge variant="outline">
+                {account.externalUsername ? `@${account.externalUsername}` : "—"} ·{" "}
+                {PLATFORM_LABELS[account.platform]}
               </Badge>
-            ))}
+            </div>
           </div>
-        </div>
-        {bio && <p className="max-w-md text-sm text-muted-foreground">{bio}</p>}
-        <div>
-          <p className="text-5xl font-extrabold tracking-tight text-primary">
-            {totalFollowers.toLocaleString()}
-          </p>
-          <p className="text-sm text-muted-foreground">Total followers</p>
-        </div>
-      </section>
+          {bio && <p className="max-w-md text-sm text-muted-foreground">{bio}</p>}
+          <div>
+            <p className="text-5xl font-extrabold tracking-tight text-primary">
+              {(account.followersCount ?? 0).toLocaleString()}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {PLATFORM_LABELS[account.platform]} followers
+            </p>
+          </div>
+        </section>
+      ))}
 
       {/* Page 2 - Analytics */}
       <section className="print-page flex flex-col gap-5 rounded-lg border bg-card p-8">
@@ -167,12 +175,20 @@ export default async function MediaKitPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {connected.map((a) => (
                 <Card key={a.id}>
-                  <CardContent className="flex items-center justify-between pt-5">
-                    <div>
-                      <p className="text-sm font-medium">{PLATFORM_LABELS[a.platform]}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {a.externalUsername ? `@${a.externalUsername}` : "—"}
-                      </p>
+                  <CardContent className="flex items-center justify-between gap-3 pt-5">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="size-9 border">
+                        <AvatarImage src={a.profilePictureUrl ?? undefined} alt="" />
+                        <AvatarFallback className="text-xs">
+                          {PLATFORM_LABELS[a.platform].slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">{PLATFORM_LABELS[a.platform]}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {a.externalUsername ? `@${a.externalUsername}` : "—"}
+                        </p>
+                      </div>
                     </div>
                     <p className="text-xl font-semibold">
                       {(a.followersCount ?? 0).toLocaleString()}
