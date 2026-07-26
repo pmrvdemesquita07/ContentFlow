@@ -28,7 +28,10 @@ export async function getCompetitorsForWorkspace(workspaceId: string) {
 export async function getCompetitorDetail(competitorId: string, workspaceId: string) {
   const competitor = await prisma.competitor.findFirst({
     where: { id: competitorId, workspaceId },
-    include: { snapshots: { orderBy: { capturedAt: "asc" } } },
+    include: {
+      snapshots: { orderBy: { capturedAt: "asc" } },
+      posts: { orderBy: { observedAt: "desc" } },
+    },
   });
   if (!competitor) return null;
 
@@ -44,6 +47,7 @@ export async function getCompetitorDetail(competitorId: string, workspaceId: str
     handle: competitor.handle,
     notes: competitor.notes,
     snapshots: competitor.snapshots,
+    posts: competitor.posts,
     latest: latest ?? null,
     followerGrowth: latest && previous ? growthPercent(latest.followersCount, previous.followersCount) : null,
   };

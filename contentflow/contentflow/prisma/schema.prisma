@@ -349,9 +349,27 @@ model Competitor {
 
   workspace Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   snapshots CompetitorSnapshot[]
+  posts     CompetitorPost[]
 
   @@index([workspaceId])
   @@map("competitors")
+}
+
+/// One row per manually-logged competitor post - frequency/format signal
+/// typed in by the user, same principle as CompetitorSnapshot's follower
+/// check-ins. No scraping, no performance metrics (we don't have them).
+model CompetitorPost {
+  id           String      @id @default(uuid())
+  competitorId String
+  type         ContentType
+  hashtags     String[]    @default([])
+  observedAt   DateTime    @default(now())
+  note         String?     @db.Text
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId, observedAt])
+  @@map("competitor_posts")
 }
 
 /// One row per manual check-in on a competitor - followers/post count typed

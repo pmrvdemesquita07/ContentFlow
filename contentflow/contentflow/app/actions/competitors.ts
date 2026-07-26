@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { prisma } from "@/lib/db";
-import type { SocialPlatform } from "@/lib/generated/prisma/enums";
+import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 
 export async function createCompetitor(
   _prevState: { error?: string } | undefined,
@@ -73,4 +73,51 @@ export async function deleteCompetitorSnapshot(snapshotId: string, competitorId:
   await prisma.competitorSnapshot.delete({ where: { id: snapshotId } });
   revalidatePath(`/competitors/${competitorId}`);
   revalidatePath("/competitors");
+}
+
+function parseHashtagList(raw: string): string[] {
+  const tags = raw
+    .split(/[\s,]+/)
+    .map((t) => t.replace(/^#/, "").trim().toLowerCase())
+    .filter(Boolean);
+  return [...new Set(tags)];
+}
+
+export async function addCompetitorPost(
+  competitorId: string,
+  _prevState: { error?: string } | undefined,
+  formData: FormData
+) {
+  const user = await requireUser();
+  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  if (!ctx) return { error: "Finish onboarding first." };
+
+  const competitor = await prisma.competitor.findFirst({
+    where: { id: competitorId, workspaceId: ctx.workspace.id },
+  });
+  if (!competitor) return { error: "Competitor not found." };
+
+  const type = String(formData.get("type") ?? "") as ContentType;
+  if (!type) return { error: "Pick a format." };
+
+  const hashtags = parseHashtagList(String(formData.get("hashtags") ?? ""));
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  await prisma.competitorPost.create({
+    data: { competitorId, type, hashtags, note },
+  });
+
+  revalidatePath(`/competitors/${competitorId}`);
+  return { error: undefined };
+}
+
+export async function deleteCompetitorPost(postId: string, competitorId: string) {
+  const user = await requireUser();
+  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  if (!ctx) return;
+
+  await prisma.competitorPost.deleteMany({
+    where: { id: postId, competitor: { workspaceId: ctx.workspace.id } },
+  });
+  revalidatePath(`/competitors/${competitorId}`);
 }

@@ -14,6 +14,7 @@ import {
   BarChart3,
   Share2,
   Radar,
+  TrendingUp,
   Briefcase,
   Users,
   FileSignature,
@@ -73,6 +74,7 @@ const GROUPS: NavGroup[] = [
     icon: BarChart3,
     links: [
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
+      { href: "/trends", label: "Trends", icon: TrendingUp, minPlan: "pro" },
       { href: "/social-hub", label: "Social Hub", icon: Share2 },
       { href: "/media-kit", label: "Media Kit", icon: IdCard },
       { href: "/competitors", label: "Competitors", icon: Radar, minPlan: "pro" },

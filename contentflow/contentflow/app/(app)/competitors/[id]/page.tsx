@@ -9,7 +9,9 @@ import { GrowthBadge } from "@/components/analytics/growth-badge";
 import { AddSnapshotForm } from "./add-snapshot-form";
 import { DeleteCompetitorButton } from "./delete-competitor-button";
 import { DeleteSnapshotButton } from "./delete-snapshot-button";
-import type { SocialPlatform } from "@/lib/generated/prisma/enums";
+import { AddCompetitorPostForm } from "./add-competitor-post-form";
+import { DeleteCompetitorPostButton } from "./delete-competitor-post-button";
+import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 
 const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   instagram: "Instagram",
@@ -17,6 +19,14 @@ const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   x: "X",
   youtube: "YouTube",
   linkedin: "LinkedIn",
+};
+
+const TYPE_LABELS: Record<ContentType, string> = {
+  post: "Post",
+  reel: "Reel",
+  video: "Video",
+  carousel: "Carousel",
+  story: "Story",
 };
 
 export default async function CompetitorDetailPage({
@@ -121,6 +131,38 @@ export default async function CompetitorDetailPage({
             </div>
           )}
           <AddSnapshotForm competitorId={competitor.id} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-5">
+          <h2 className="mb-3 text-sm font-semibold">Competitor posts</h2>
+          {competitor.posts.length === 0 ? (
+            <p className="mb-3 text-sm text-muted-foreground">
+              No posts logged yet - add one below to start comparing formats in Trends.
+            </p>
+          ) : (
+            <div className="mb-4 flex flex-col divide-y">
+              {competitor.posts.map((post) => (
+                <div key={post.id} className="flex items-center gap-3 py-2.5">
+                  <span className="text-sm font-medium">{TYPE_LABELS[post.type]}</span>
+                  {post.hashtags.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {post.hashtags.map((t) => `#${t}`).join(" ")}
+                    </span>
+                  )}
+                  {post.note && <span className="text-xs text-muted-foreground">{post.note}</span>}
+                  <span className="text-xs text-muted-foreground">
+                    {post.observedAt.toLocaleDateString()}
+                  </span>
+                  <div className="ml-auto">
+                    <DeleteCompetitorPostButton postId={post.id} competitorId={competitor.id} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <AddCompetitorPostForm competitorId={competitor.id} />
         </CardContent>
       </Card>
     </div>
