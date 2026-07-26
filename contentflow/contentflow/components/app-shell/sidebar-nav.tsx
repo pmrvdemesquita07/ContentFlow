@@ -20,6 +20,7 @@ import {
   Compass,
   Building2,
   Settings,
+  IdCard,
   Lightbulb,
   Sparkles,
   ChevronRight,
@@ -73,6 +74,7 @@ const GROUPS: NavGroup[] = [
     links: [
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/social-hub", label: "Social Hub", icon: Share2 },
+      { href: "/media-kit", label: "Media Kit", icon: IdCard },
       { href: "/competitors", label: "Competitors", icon: Radar, minPlan: "pro" },
     ],
   },
