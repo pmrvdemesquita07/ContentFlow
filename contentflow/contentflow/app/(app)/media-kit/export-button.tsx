@@ -1,5 +1,3 @@
-$ cat "/home/claude/repo/contentflow/app/(app)/media-kit/export-button.tsx"
-
 "use client";
 
 import { Printer } from "lucide-react";
