@@ -155,6 +155,7 @@
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
+    -webkit-text-fill-color: transparent;
   }
   .bg-gradient-brand {
     background-image: linear-gradient(135deg, var(--gradient-from), var(--gradient-to));
@@ -168,5 +169,20 @@
   }
   main {
     padding: 0 !important;
+  }
+  /* Without this, browsers "ink-save" by dropping background colors/gradients
+     on print - which breaks the background-clip:text gradient logo/headings
+     (they'd render as a solid color box instead of clipped to the letters). */
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  /* Media kit: each section is its own printed page, so the cover, stats,
+     and closing pages don't get cut mid-content across a page boundary. */
+  .print-page {
+    break-after: page;
+  }
+  .print-page:last-child {
+    break-after: auto;
   }
 }
