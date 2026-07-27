@@ -1,0 +1,55 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+// /reports is a public, unauthenticated shareable-report link (see
+// app/reports/[id]/page.tsx) - anyone with the link can view it, no login.
+// /api is excluded here too: every route under it (cron's CRON_SECRET check,
+// the Stripe webhook's signature check, and the v1 JSON API's bearer token)
+// already authenticates itself and must answer with a real status code
+// instead of a 307 to an HTML login page, which none of those callers follow.
+const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/reports", "/api"];
+
+function isPublicPath(pathname: string) {
+  // Exact match for "/" - it's the public marketing homepage, but every
+  // other path also starts with "/" so it can't join PUBLIC_PATHS as a prefix.
+  if (pathname === "/") return true;
+  return PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+}
+
+export async function updateSession(request: NextRequest) {
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // Optimistic check: reads/refreshes the session from the cookie. Real
+  // authorization still happens server-side, close to the data (see any
+  // page/action that touches Prisma) - this is only the fast, cookie-level
+  // gate that keeps signed-out users off app routes.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
+    const loginUrl = new URL("/login", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return response;
+}
