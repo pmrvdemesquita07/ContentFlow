@@ -17,6 +17,13 @@ export function getContentByStatuses(brandId: string, statuses: ContentStatus[])
   });
 }
 
+export function getContentById(id: string, brandId: string) {
+  return prisma.content.findFirst({
+    where: { id, brandId },
+    ...WITH_RELATIONS,
+  });
+}
+
 export function getScheduledContent(brandId: string) {
   return prisma.content.findMany({
     where: { brandId, scheduledAt: { not: null } },

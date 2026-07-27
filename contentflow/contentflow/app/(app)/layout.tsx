@@ -10,6 +10,7 @@ import { BrandSwitcher } from "@/components/workspace/brand-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandSearch } from "@/components/search/command-search";
 import { SidebarNav } from "@/components/app-shell/sidebar-nav";
+import { MobileNav } from "@/components/app-shell/mobile-nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -21,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col border-r bg-muted/30 p-4">
+      <aside className="hidden w-60 shrink-0 flex-col border-r bg-muted/30 p-4 md:flex">
         <Logo size="sm" className="mb-4 block" />
         <div className="mb-3">
           <BrandSwitcher
@@ -54,7 +55,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <ThemeToggle />
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-8">{children}</main>
+
+      <header className="fixed inset-x-0 top-0 z-30 flex items-center border-b bg-background p-3 md:hidden">
+        <Logo size="sm" />
+      </header>
+
+      <main className="flex-1 overflow-y-auto p-4 pt-[4.5rem] pb-24 md:p-8 md:pt-8 md:pb-8">
+        {children}
+      </main>
+
+      <MobileNav
+        plan={ctx.workspace.plan}
+        workspaceType={ctx.workspace.type}
+        workspaces={ctx.workspaces}
+        currentWorkspaceName={ctx.workspace.name}
+        currentBrandId={ctx.brand?.id}
+        currentBrandName={ctx.brand?.name}
+        searchIndex={searchIndex}
+      />
     </div>
   );
 }

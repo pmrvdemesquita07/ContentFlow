@@ -50,3 +50,28 @@ export async function getCurrentWorkspaceAndBrand(userId: string) {
   const brand = workspace.brands[0] ?? null;
   return { workspace, brand, workspaces };
 }
+
+/**
+ * The JSON API's equivalent of `getCurrentWorkspaceAndBrand` - there's no
+ * brand-switcher cookie on an API request, so callers instead pass an
+ * explicit `?brandId=`, which must belong to one of the user's own
+ * workspaces. Falls back to their first workspace/brand when omitted.
+ */
+export async function resolveApiBrand(userId: string, brandId?: string | null) {
+  const workspaces = await getUserWorkspaces(userId);
+  if (workspaces.length === 0) return null;
+
+  if (brandId) {
+    for (const workspace of workspaces) {
+      const brand = workspace.brands.find((b) => b.id === brandId);
+      if (brand) return { workspace, brand, workspaces };
+    }
+    return null;
+  }
+
+  const workspace = workspaces[0];
+  const brand = workspace.brands[0] ?? null;
+  return { workspace, brand, workspaces };
+}
+
+export type ApiBrandContext = NonNullable<Awaited<ReturnType<typeof resolveApiBrand>>>;

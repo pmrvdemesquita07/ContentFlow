@@ -3,132 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  LayoutDashboard,
-  Megaphone,
-  SquareCheck,
-  Inbox,
-  FileText,
-  Calendar,
-  Image,
-  BarChart3,
-  Share2,
-  Radar,
-  TrendingUp,
-  Briefcase,
-  Users,
-  FileSignature,
-  Compass,
-  Building2,
-  Settings,
-  IdCard,
-  Lightbulb,
-  Sparkles,
-  ChevronRight,
-  type LucideIcon,
-} from "lucide-react";
-import { planAtLeast } from "@/lib/plan";
+import { ChevronRight } from "lucide-react";
 import type { Plan, WorkspaceType } from "@/lib/generated/prisma/enums";
 import { cn } from "@/lib/utils";
-
-type NavLink = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  minPlan?: Plan;
-  hideFor?: WorkspaceType[];
-  requireType?: WorkspaceType[];
-};
-
-type NavGroup = {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  links: NavLink[];
-};
-
-// Links used often enough that hiding them behind a group would slow people
-// down - stay one click away for everyone. Settings is rendered separately,
-// pinned to the bottom instead of at the end of this list.
-const TOP_LINKS: NavLink[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone, minPlan: "pro" },
-  { href: "/tasks", label: "Tasks", icon: SquareCheck, minPlan: "pro" },
-  { href: "/mailbox", label: "Mailbox", icon: Inbox, minPlan: "pro" },
-];
-
-const GROUPS: NavGroup[] = [
-  {
-    id: "conteudo",
-    label: "Conteúdo",
-    icon: FileText,
-    links: [
-      { href: "/posts", label: "Posts", icon: FileText },
-      { href: "/calendar", label: "Calendar", icon: Calendar },
-      { href: "/media", label: "Media", icon: Image },
-    ],
-  },
-  {
-    id: "crescimento",
-    label: "Crescimento",
-    icon: BarChart3,
-    links: [
-      { href: "/analytics", label: "Analytics", icon: BarChart3 },
-      { href: "/trends", label: "Trends", icon: TrendingUp, minPlan: "pro" },
-      { href: "/social-hub", label: "Social Hub", icon: Share2 },
-      { href: "/media-kit", label: "Media Kit", icon: IdCard },
-      { href: "/competitors", label: "Competitors", icon: Radar, minPlan: "pro" },
-    ],
-  },
-  {
-    id: "criadores",
-    label: "Criadores & parcerias",
-    icon: Users,
-    links: [
-      { href: "/opportunities", label: "Opportunities", icon: Briefcase, minPlan: "pro" },
-      { href: "/creators", label: "Creators", icon: Users, minPlan: "pro", hideFor: ["creator"] },
-      {
-        href: "/contracts",
-        label: "Contracts",
-        icon: FileSignature,
-        minPlan: "pro",
-        hideFor: ["creator"],
-      },
-      {
-        href: "/discover",
-        label: "Discover creators",
-        icon: Compass,
-        minPlan: "studio",
-        hideFor: ["creator"],
-      },
-      {
-        href: "/agency",
-        label: "Agency roster",
-        icon: Building2,
-        minPlan: "studio",
-        requireType: ["agency"],
-      },
-    ],
-  },
-];
-
-const SETTINGS_LINK: NavLink = { href: "/settings", label: "Settings", icon: Settings };
-
-const SOON_LINKS = [
-  { label: "Ideas Bank", icon: Lightbulb },
-  { label: "Assistants", icon: Sparkles },
-];
-
-function isVisible(link: NavLink, plan: Plan, workspaceType: WorkspaceType) {
-  if (link.minPlan && !planAtLeast(plan, link.minPlan)) return false;
-  if (link.hideFor?.includes(workspaceType)) return false;
-  if (link.requireType && !link.requireType.includes(workspaceType)) return false;
-  return true;
-}
-
-function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import {
+  TOP_LINKS,
+  GROUPS,
+  SETTINGS_LINK,
+  SOON_LINKS,
+  isLinkVisible,
+  isLinkActive,
+  type NavLink,
+} from "@/lib/nav-links";
 
 function NavItem({ link, active }: { link: NavLink; active: boolean }) {
   return (
@@ -156,7 +42,7 @@ export function SidebarNav({
 
   const visibleGroups = GROUPS.map((group) => ({
     ...group,
-    links: group.links.filter((link) => isVisible(link, plan, workspaceType)),
+    links: group.links.filter((link) => isLinkVisible(link, plan, workspaceType)),
   })).filter((group) => group.links.length > 0);
 
   // Manual toggles win once a group has been clicked; until then, a group
@@ -165,13 +51,13 @@ export function SidebarNav({
   // instead of clicking the group open themselves.
   const [manualOverrides, setManualOverrides] = useState<Record<string, boolean>>({});
   const activeGroupId = visibleGroups.find((group) =>
-    group.links.some((link) => isActive(pathname, link.href))
+    group.links.some((link) => isLinkActive(pathname, link.href))
   )?.id;
 
   return (
     <nav className="flex flex-1 flex-col gap-0.5">
-      {TOP_LINKS.filter((link) => isVisible(link, plan, workspaceType)).map((link) => (
-        <NavItem key={link.href} link={link} active={isActive(pathname, link.href)} />
+      {TOP_LINKS.filter((link) => isLinkVisible(link, plan, workspaceType)).map((link) => (
+        <NavItem key={link.href} link={link} active={isLinkActive(pathname, link.href)} />
       ))}
 
       {visibleGroups.map((group) => {
@@ -196,7 +82,7 @@ export function SidebarNav({
             {open && (
               <div className="flex flex-col gap-0.5 pl-[1.6rem]">
                 {group.links.map((link) => (
-                  <NavItem key={link.href} link={link} active={isActive(pathname, link.href)} />
+                  <NavItem key={link.href} link={link} active={isLinkActive(pathname, link.href)} />
                 ))}
               </div>
             )}
@@ -205,7 +91,7 @@ export function SidebarNav({
       })}
 
       <div className="mt-1 border-t pt-1">
-        <NavItem link={SETTINGS_LINK} active={isActive(pathname, SETTINGS_LINK.href)} />
+        <NavItem link={SETTINGS_LINK} active={isLinkActive(pathname, SETTINGS_LINK.href)} />
       </div>
 
       <div className="mt-4 mb-1 px-2.5 text-xs font-medium text-muted-foreground">Coming soon</div>

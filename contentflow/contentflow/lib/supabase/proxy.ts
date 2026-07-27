@@ -3,7 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // /reports is a public, unauthenticated shareable-report link (see
 // app/reports/[id]/page.tsx) - anyone with the link can view it, no login.
-const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/reports"];
+// /api is excluded here too: every route under it (cron's CRON_SECRET check,
+// the Stripe webhook's signature check, and the v1 JSON API's bearer token)
+// already authenticates itself and must answer with a real status code
+// instead of a 307 to an HTML login page, which none of those callers follow.
+const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/reports", "/api"];
 
 function isPublicPath(pathname: string) {
   // Exact match for "/" - it's the public marketing homepage, but every
