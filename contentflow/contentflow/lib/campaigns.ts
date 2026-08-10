@@ -16,6 +16,15 @@ export function roiOf(budget: number | null, interactions: number, reach: number
   };
 }
 
+/** Just id/name, for a filter dropdown - the full campaign list carries ROI rollups that are wasted work here. */
+export function getCampaignOptions(brandId: string) {
+  return prisma.campaign.findMany({
+    where: { brandId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
 export async function getCampaignsForBrand(brandId: string) {
   const campaigns = await prisma.campaign.findMany({
     where: { brandId },
@@ -77,6 +86,8 @@ export async function getCampaignDetail(campaignId: string, brandId: string) {
       status: item.status,
       thumbnailUrl: item.thumbnailUrl,
       externalUrl: item.externalUrl,
+      publishedAt: item.publishedAt,
+      scheduledAt: item.scheduledAt,
       likes: m?.likes ?? 0,
       comments: m?.comments ?? 0,
       shares: m?.shares ?? 0,
