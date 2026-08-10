@@ -7,6 +7,7 @@ import { getReportsForCampaign, getReportSubscriptionsForCampaign } from "@/lib/
 import { planAtLeast } from "@/lib/plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ListFilters } from "@/components/content/list-filters";
 import { EditCampaignForm } from "./edit-campaign-form";
 import { DeleteCampaignButton } from "./delete-campaign-button";
 import { AssignContentForm } from "./assign-content-form";
@@ -25,12 +26,21 @@ const TYPE_LABELS: Record<string, string> = {
   story: "Story",
 };
 
+function parseDateParam(value?: string) {
+  if (!value) return undefined;
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
 export default async function CampaignDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ type?: string; from?: string; to?: string }>;
 }) {
   const { id } = await params;
+  const filterParams = await searchParams;
 
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
@@ -39,6 +49,17 @@ export default async function CampaignDetailPage({
 
   const campaign = await getCampaignDetail(id, ctx.brand.id);
   if (!campaign) notFound();
+
+  const from = parseDateParam(filterParams.from);
+  const to = parseDateParam(filterParams.to);
+  const toEndOfDay = to ? new Date(to.getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
+  const filteredPosts = campaign.posts.filter((post) => {
+    if (filterParams.type && post.type !== filterParams.type) return false;
+    const date = post.publishedAt ?? post.scheduledAt;
+    if (from && (!date || date < from)) return false;
+    if (toEndOfDay && (!date || date > toEndOfDay)) return false;
+    return true;
+  });
 
   const reports = await getReportsForCampaign(campaign.id, ctx.workspace.id);
   const reportSubscriptions = await getReportSubscriptionsForCampaign(campaign.id, ctx.workspace.id);
@@ -137,14 +158,19 @@ export default async function CampaignDetailPage({
 
       <Card>
         <CardContent className="pt-5">
-          <h2 className="mb-3 text-sm font-semibold">Posts in this campaign</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold">Posts in this campaign</h2>
+            {campaign.posts.length > 0 && <ListFilters />}
+          </div>
           {campaign.posts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No posts yet - add some from the list below.
             </p>
+          ) : filteredPosts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No posts match these filters.</p>
           ) : (
             <div className="flex flex-col divide-y">
-              {campaign.posts.map((post) => (
+              {filteredPosts.map((post) => (
                 <div key={post.id} className="flex items-center gap-3 py-3">
                   {post.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
