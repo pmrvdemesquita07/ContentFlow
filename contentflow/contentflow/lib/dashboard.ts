@@ -37,22 +37,23 @@ function growthPercent(current: number, previous: number): number | null {
 /**
  * Everything the Dashboard needs to be a real landing page instead of just
  * a status-counts view - top performers, campaigns actually running right
- * now, a fixed trailing-7-day snapshot (independent of whatever range the
- * charts below are set to), open tasks, and today/tomorrow's calendar.
+ * now, a snapshot over the selected date range (compared against the same-
+ * length period immediately before it), open tasks, and today/tomorrow's
+ * calendar.
  */
-export async function getDashboardOverview(brandId: string) {
+export async function getDashboardOverview(brandId: string, range: ResolvedRange) {
   const now = new Date();
   const todayStart = startOfDay(now);
   const tomorrowStart = new Date(todayStart.getTime() + DAY_MS);
   const dayAfterTomorrowStart = new Date(todayStart.getTime() + 2 * DAY_MS);
-  const sevenDaysAgo = new Date(todayStart.getTime() - 7 * DAY_MS);
-  const fourteenDaysAgo = new Date(todayStart.getTime() - 14 * DAY_MS);
-  const thirtyDaysAgo = new Date(todayStart.getTime() - 30 * DAY_MS);
+
+  const periodLength = range.end.getTime() - range.start.getTime();
+  const previousPeriodStart = new Date(range.start.getTime() - periodLength);
 
   const [topPerformersRaw, campaigns, tasks, calendarItems, currentPeriodMetrics, previousPeriodMetrics] =
     await Promise.all([
       prisma.content.findMany({
-        where: { brandId, publishedAt: { gte: thirtyDaysAgo }, metrics: { some: {} } },
+        where: { brandId, publishedAt: { gte: range.start, lte: range.end }, metrics: { some: {} } },
         include: { metrics: { orderBy: { capturedAt: "desc" }, take: 1 } },
         orderBy: { publishedAt: "desc" },
         take: 50,
@@ -75,10 +76,10 @@ export async function getDashboardOverview(brandId: string) {
         select: { id: true, title: true, type: true, status: true, scheduledAt: true, publishedAt: true },
       }),
       prisma.metric.findMany({
-        where: { content: { brandId }, capturedAt: { gte: sevenDaysAgo } },
+        where: { content: { brandId }, capturedAt: { gte: range.start, lte: range.end } },
       }),
       prisma.metric.findMany({
-        where: { content: { brandId }, capturedAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } },
+        where: { content: { brandId }, capturedAt: { gte: previousPeriodStart, lt: range.start } },
       }),
     ]);
 
@@ -118,7 +119,7 @@ export async function getDashboardOverview(brandId: string) {
     return true;
   });
 
-  const sum7 = currentPeriodMetrics.reduce(
+  const sumCurrent = currentPeriodMetrics.reduce(
     (acc, m) => ({
       interactions: acc.interactions + interactionsOf(m),
       reach: acc.reach + m.reach,
@@ -126,19 +127,19 @@ export async function getDashboardOverview(brandId: string) {
     }),
     { interactions: 0, reach: 0, posts: 0 }
   );
-  sum7.posts = new Set(currentPeriodMetrics.map((m) => m.contentId)).size;
+  sumCurrent.posts = new Set(currentPeriodMetrics.map((m) => m.contentId)).size;
 
-  const sumPrevious7 = previousPeriodMetrics.reduce(
+  const sumPrevious = previousPeriodMetrics.reduce(
     (acc, m) => ({ interactions: acc.interactions + interactionsOf(m), reach: acc.reach + m.reach }),
     { interactions: 0, reach: 0 }
   );
 
-  const last7Days = {
-    posts: sum7.posts,
-    interactions: sum7.interactions,
-    reach: sum7.reach,
-    interactionsGrowth: growthPercent(sum7.interactions, sumPrevious7.interactions),
-    reachGrowth: growthPercent(sum7.reach, sumPrevious7.reach),
+  const currentPeriod = {
+    posts: sumCurrent.posts,
+    interactions: sumCurrent.interactions,
+    reach: sumCurrent.reach,
+    interactionsGrowth: growthPercent(sumCurrent.interactions, sumPrevious.interactions),
+    reachGrowth: growthPercent(sumCurrent.reach, sumPrevious.reach),
   };
 
   const todayItems = calendarItems.filter((item) => {
@@ -154,7 +155,7 @@ export async function getDashboardOverview(brandId: string) {
     topPerformers,
     topPerformersByPlatform,
     activeCampaigns,
-    last7Days,
+    currentPeriod,
     upcomingTasks: tasks,
     todayItems,
     tomorrowItems,
