@@ -96,7 +96,7 @@ export default async function DashboardPage({
     overview,
   ] = await Promise.all([
     getDashboardData(ctx.brand.id, resolvedRange),
-    getDashboardOverview(ctx.brand.id),
+    getDashboardOverview(ctx.brand.id, resolvedRange),
   ]);
 
   // Merge the two day-bucketed series into one row per day for the CSV export.
@@ -132,31 +132,31 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Last 7 days at a glance - fixed window, independent of the range picker above. */}
+      {/* Snapshot over the selected range, compared against the same-length period before it. */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Posts published (7d)</p>
-            <p className="text-2xl font-semibold">{overview.last7Days.posts}</p>
+            <p className="text-xs text-muted-foreground">Posts published ({resolvedRange.label})</p>
+            <p className="text-2xl font-semibold">{overview.currentPeriod.posts}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Interactions (7d)</p>
+            <p className="text-xs text-muted-foreground">Interactions ({resolvedRange.label})</p>
             <div className="flex items-baseline gap-2">
               <p className="text-2xl font-semibold">
-                {overview.last7Days.interactions.toLocaleString()}
+                {overview.currentPeriod.interactions.toLocaleString()}
               </p>
-              <GrowthTag value={overview.last7Days.interactionsGrowth} />
+              <GrowthTag value={overview.currentPeriod.interactionsGrowth} />
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Reach (7d)</p>
+            <p className="text-xs text-muted-foreground">Reach ({resolvedRange.label})</p>
             <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-semibold">{overview.last7Days.reach.toLocaleString()}</p>
-              <GrowthTag value={overview.last7Days.reachGrowth} />
+              <p className="text-2xl font-semibold">{overview.currentPeriod.reach.toLocaleString()}</p>
+              <GrowthTag value={overview.currentPeriod.reachGrowth} />
             </div>
           </CardContent>
         </Card>
@@ -173,7 +173,7 @@ export default async function DashboardPage({
           <CardContent>
             {overview.topPerformers.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No published posts with metrics in the last 30 days yet.
+                No published posts with metrics in this period ({resolvedRange.label}) yet.
               </p>
             ) : overview.topPerformersByPlatform.length > 1 ? (
               <div className="grid gap-6 sm:grid-cols-2">
