@@ -2,15 +2,19 @@ import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
-import { getContentByStatuses } from "@/lib/content";
+import { getFilteredContent } from "@/lib/content";
+import { getCampaignOptions } from "@/lib/campaigns";
+import { planAtLeast } from "@/lib/plan";
 import { NewContentDialog } from "@/components/content/new-content-dialog";
 import { StatusBadge } from "@/components/content/status-badge";
 import { ContentDetailDialog } from "@/components/content/content-detail-dialog";
+import { ListFilters } from "@/components/content/list-filters";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { ContentStatus } from "@/lib/generated/prisma/enums";
+import type { ContentStatus, ContentType } from "@/lib/generated/prisma/enums";
 
 const POST_STATUSES: ContentStatus[] = ["draft", "scheduled", "published"];
+const TYPES: ContentType[] = ["post", "story", "reel", "video", "carousel"];
 
 const FILTERS: { label: string; value: "all" | ContentStatus }[] = [
   { label: "All", value: "all" },
@@ -19,19 +23,48 @@ const FILTERS: { label: string; value: "all" | ContentStatus }[] = [
   { label: "Published", value: "published" },
 ];
 
+function parseDateParam(value?: string) {
+  if (!value) return undefined;
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
 export default async function PostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; type?: string; campaignId?: string; from?: string; to?: string }>;
 }) {
-  const { status } = await searchParams;
+  const params = await searchParams;
   const user = await requireUser();
   const ctx = await getCurrentWorkspaceAndBrand(user.id);
   if (!ctx?.brand) return null;
+  const isPro = planAtLeast(ctx.workspace.plan, "pro");
 
-  const activeFilter = FILTERS.some((f) => f.value === status) ? status : "all";
+  const activeFilter = FILTERS.some((f) => f.value === params.status) ? params.status : "all";
   const statuses = activeFilter === "all" ? POST_STATUSES : [activeFilter as ContentStatus];
-  const posts = await getContentByStatuses(ctx.brand.id, statuses);
+  const type = params.type && (TYPES as string[]).includes(params.type) ? (params.type as ContentType) : undefined;
+  const to = parseDateParam(params.to);
+  // Inclusive of the whole "to" day, matching the picker's own day-granularity intent.
+  const toEndOfDay = to ? new Date(to.getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
+
+  const [posts, campaignOptions] = await Promise.all([
+    getFilteredContent(ctx.brand.id, {
+      statuses,
+      type,
+      campaignId: params.campaignId,
+      from: parseDateParam(params.from),
+      to: toEndOfDay,
+    }),
+    isPro ? getCampaignOptions(ctx.brand.id) : Promise.resolve(undefined),
+  ]);
+
+  // Preserve every other active filter while switching status tabs.
+  const otherParams = new URLSearchParams();
+  if (params.type) otherParams.set("type", params.type);
+  if (params.campaignId) otherParams.set("campaignId", params.campaignId);
+  if (params.from) otherParams.set("from", params.from);
+  if (params.to) otherParams.set("to", params.to);
+  const otherQs = otherParams.toString();
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,21 +78,29 @@ export default async function PostsPage({
         <NewContentDialog defaultStatus="draft" triggerLabel="New post" />
       </div>
 
-      <div className="flex gap-1 border-b">
-        {FILTERS.map((f) => (
-          <Link
-            key={f.value}
-            href={f.value === "all" ? "/posts" : `/posts?status=${f.value}`}
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium",
-              activeFilter === f.value
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {f.label}
-          </Link>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+        <div className="flex gap-1">
+          {FILTERS.map((f) => {
+            const qs = new URLSearchParams(otherQs);
+            if (f.value !== "all") qs.set("status", f.value);
+            const qsString = qs.toString();
+            return (
+              <Link
+                key={f.value}
+                href={qsString ? `/posts?${qsString}` : "/posts"}
+                className={cn(
+                  "rounded-md px-2.5 py-1.5 text-sm font-medium",
+                  activeFilter === f.value
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {f.label}
+              </Link>
+            );
+          })}
+        </div>
+        <ListFilters campaigns={campaignOptions} />
       </div>
 
       {posts.length === 0 ? (
