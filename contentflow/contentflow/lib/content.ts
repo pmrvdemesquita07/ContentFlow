@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { ContentStatus } from "@/lib/generated/prisma/enums";
+import type { ContentStatus, ContentType } from "@/lib/generated/prisma/enums";
 
 const WITH_RELATIONS = {
   include: {
@@ -12,6 +12,37 @@ const WITH_RELATIONS = {
 export function getContentByStatuses(brandId: string, statuses: ContentStatus[]) {
   return prisma.content.findMany({
     where: { brandId, status: { in: statuses } },
+    orderBy: { updatedAt: "desc" },
+    ...WITH_RELATIONS,
+  });
+}
+
+export type ContentFilters = {
+  statuses: ContentStatus[];
+  /** Format (post/story/reel/video/carousel); omit for every format. */
+  type?: ContentType;
+  /** A specific campaign id, "none" for content with no campaign, or omit for either. */
+  campaignId?: string | "none";
+  /** Matches content whose publishedAt OR scheduledAt falls in [from, to]. */
+  from?: Date;
+  to?: Date;
+};
+
+/** Posts/Campaigns-list filtering: any combination of status, format, campaign and date range. */
+export function getFilteredContent(brandId: string, filters: ContentFilters) {
+  const { statuses, type, campaignId, from, to } = filters;
+  const dateBounds = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
+
+  return prisma.content.findMany({
+    where: {
+      brandId,
+      status: { in: statuses },
+      ...(type ? { type } : {}),
+      ...(campaignId === "none" ? { campaignId: null } : campaignId ? { campaignId } : {}),
+      ...(from || to
+        ? { OR: [{ publishedAt: dateBounds }, { scheduledAt: dateBounds }] }
+        : {}),
+    },
     orderBy: { updatedAt: "desc" },
     ...WITH_RELATIONS,
   });
