@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BriefingAssistant } from "@/components/ai/briefing-assistant";
 
 const PLATFORMS = [
   { value: "", label: "Any platform" },
@@ -19,21 +20,33 @@ const PLATFORMS = [
 export function NewOpportunityForm() {
   const [state, formAction, pending] = useActionState(createOpportunity, undefined);
   const formRef = useRef<HTMLFormElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (state && !state.error) formRef.current?.reset();
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="title">Title</Label>
-        <Input id="title" name="title" placeholder="e.g. Summer collection - 2 Reels" required />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="description">Description</Label>
-        <Textarea id="description" name="description" placeholder="What you're looking for" />
-      </div>
+    <div className="flex flex-col gap-3">
+      <BriefingAssistant
+        onUse={(text) => {
+          if (descriptionRef.current) descriptionRef.current.value = text;
+        }}
+      />
+      <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="title">Title</Label>
+          <Input id="title" name="title" placeholder="e.g. Summer collection - 2 Reels" required />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            ref={descriptionRef}
+            id="description"
+            name="description"
+            placeholder="What you're looking for"
+          />
+        </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="niche">Niche</Label>
@@ -68,6 +81,7 @@ export function NewOpportunityForm() {
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? "Posting…" : "Post opportunity"}
       </Button>
-    </form>
+      </form>
+    </div>
   );
 }
