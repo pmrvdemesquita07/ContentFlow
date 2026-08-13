@@ -5,6 +5,7 @@ import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
 import { getCalendarContent, getBestPostingTimes } from "@/lib/content";
 import { ContentDetailDialog } from "@/components/content/content-detail-dialog";
 import { NewContentDialog } from "@/components/content/new-content-dialog";
+import { QuickSchedule } from "@/components/content/quick-schedule";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,8 @@ export default async function CalendarPage({
           <NewContentDialog defaultStatus="scheduled" triggerLabel="New post" showScheduledAt />
         </div>
       </div>
+
+      <QuickSchedule />
 
       {bestTimes && (
         <Card>
