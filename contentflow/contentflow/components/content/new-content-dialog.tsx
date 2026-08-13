@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TYPE_OPTIONS } from "./options";
+import { CaptionAssistant } from "./caption-assistant";
 
 export function NewContentDialog({
   defaultStatus,
@@ -36,6 +37,8 @@ export function NewContentDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(createContent, undefined);
+  const [body, setBody] = useState("");
+  const [type, setType] = useState("post");
 
   return (
     <Dialog
@@ -54,6 +57,7 @@ export function NewContentDialog({
         <DialogHeader>
           <DialogTitle>New content</DialogTitle>
         </DialogHeader>
+        <CaptionAssistant contentType={type} onUse={(text) => setBody(text)} />
         <form
           action={async (formData) => {
             await formAction(formData);
@@ -68,11 +72,17 @@ export function NewContentDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="new-body">Body</Label>
-            <Textarea id="new-body" name="body" rows={4} />
+            <Textarea
+              id="new-body"
+              name="body"
+              rows={4}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="new-type">Type</Label>
-            <Select name="type" defaultValue="post">
+            <Select name="type" defaultValue="post" onValueChange={setType}>
               <SelectTrigger id="new-type" className="w-full">
                 <SelectValue />
               </SelectTrigger>
