@@ -117,6 +117,8 @@ enum AssistantType {
   growth
   captions
   viral_ideas
+  briefing
+  quick_schedule
 }
 
 /// Mirrors a Supabase Auth user (auth.users). `id` is the same UUID Supabase
@@ -180,6 +182,8 @@ model Workspace {
   sourcedCreators Creator[] @relation("CreatorSourceWorkspace")
   reports Report[]
   reportSubscriptions ReportSubscription[]
+  assistantLogs AssistantLog[]
+  aiUsage AiUsage[]
 
   @@map("workspaces")
 }
@@ -787,10 +791,29 @@ model Comment {
 
 model AssistantLog {
   id            String        @id @default(uuid())
+  workspaceId   String
   assistantType AssistantType
   input         String        @db.Text
   output        String        @db.Text
   createdAt     DateTime      @default(now())
 
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
   @@map("assistant_logs")
+}
+
+/// One row per workspace per calendar month - a simple running counter used
+/// to cap AI assistant calls per plan tier, not a detailed usage ledger
+/// (AssistantLog already has the per-call detail).
+model AiUsage {
+  id          String   @id @default(uuid())
+  workspaceId String
+  month       String   // "YYYY-MM"
+  count       Int      @default(0)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, month])
+  @@map("ai_usage")
 }
