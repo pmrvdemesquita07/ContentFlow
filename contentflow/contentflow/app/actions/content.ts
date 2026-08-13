@@ -8,6 +8,12 @@ import type { ContentStatus, ContentType, SocialPlatform } from "@/lib/generated
 
 const VIEW_PATHS = ["/ideas", "/posts", "/calendar"];
 
+// A weekly repeat that ran forever would let one form submission queue up
+// an unbounded number of rows - a year's worth of weekly occurrences is
+// more than anyone schedules content that far ahead for, so it doubles as
+// a sane ceiling rather than a real limit anyone should hit.
+const MAX_REPEAT_OCCURRENCES = 52;
+
 function revalidateViews() {
   VIEW_PATHS.forEach((path) => revalidatePath(path));
 }
@@ -26,22 +32,47 @@ export async function createContent(
   const body = String(formData.get("body") ?? "");
   const scheduledAtRaw = String(formData.get("scheduledAt") ?? "");
   const platforms = formData.getAll("platforms").map((p) => String(p)) as SocialPlatform[];
+  const repeatWeekly = formData.get("repeatWeekly") === "on";
+  const repeatUntilRaw = String(formData.get("repeatUntil") ?? "");
 
   if (!title) return { error: "Title is required." };
 
-  await prisma.content.create({
-    data: {
-      workspaceId: ctx.workspace.id,
-      brandId: ctx.brand.id,
-      createdBy: user.id,
-      title,
-      body,
-      type,
-      status,
-      platforms,
-      scheduledAt: scheduledAtRaw ? new Date(scheduledAtRaw) : null,
-    },
-  });
+  const baseData = {
+    workspaceId: ctx.workspace.id,
+    brandId: ctx.brand.id,
+    createdBy: user.id,
+    title,
+    body,
+    type,
+    status,
+    platforms,
+  };
+
+  if (repeatWeekly) {
+    if (!scheduledAtRaw) return { error: "Pick a date and time to repeat from." };
+    const start = new Date(scheduledAtRaw);
+    const until = repeatUntilRaw ? new Date(`${repeatUntilRaw}T23:59:59`) : null;
+    if (!until || Number.isNaN(until.getTime()) || until < start) {
+      return { error: "Pick a valid \"repeat until\" date, on or after the scheduled date." };
+    }
+
+    const occurrences: Date[] = [];
+    for (
+      let current = start;
+      current <= until && occurrences.length < MAX_REPEAT_OCCURRENCES;
+      current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000)
+    ) {
+      occurrences.push(current);
+    }
+
+    await prisma.content.createMany({
+      data: occurrences.map((scheduledAt) => ({ ...baseData, scheduledAt })),
+    });
+  } else {
+    await prisma.content.create({
+      data: { ...baseData, scheduledAt: scheduledAtRaw ? new Date(scheduledAtRaw) : null },
+    });
+  }
 
   revalidateViews();
   return { error: undefined };
