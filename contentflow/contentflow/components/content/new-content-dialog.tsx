@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { createContent } from "@/app/actions/content";
 import type { ContentStatus } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,9 +37,22 @@ export function NewContentDialog({
   showScheduledAt?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState(createContent, undefined);
+  const [state, setState] = useState<{ error?: string } | undefined>(undefined);
+  const [pending, startTransition] = useTransition();
   const [body, setBody] = useState("");
   const [type, setType] = useState("post");
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+
+  // Only closes the dialog once a submission actually succeeds - otherwise
+  // (e.g. an invalid "repeat until" date) the dialog would vanish along
+  // with the error message it's showing.
+  function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      const result = await createContent(undefined, formData);
+      setState(result);
+      if (!result?.error) setOpen(false);
+    });
+  }
 
   return (
     <Dialog
@@ -58,13 +72,7 @@ export function NewContentDialog({
           <DialogTitle>New content</DialogTitle>
         </DialogHeader>
         <CaptionAssistant contentType={type} onUse={(text) => setBody(text)} />
-        <form
-          action={async (formData) => {
-            await formAction(formData);
-            setOpen(false);
-          }}
-          className="flex flex-col gap-4"
-        >
+        <form action={handleSubmit} className="flex flex-col gap-4">
           <input type="hidden" name="status" value={defaultStatus} />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="new-title">Title</Label>
@@ -99,6 +107,27 @@ export function NewContentDialog({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="new-scheduledAt">Scheduled for</Label>
               <Input id="new-scheduledAt" name="scheduledAt" type="datetime-local" />
+            </div>
+          )}
+          {showScheduledAt && (
+            <div className="flex flex-col gap-3 rounded-md border p-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="new-repeatWeekly"
+                  checked={repeatWeekly}
+                  onCheckedChange={(checked) => setRepeatWeekly(checked === true)}
+                />
+                <input type="hidden" name="repeatWeekly" value={repeatWeekly ? "on" : ""} />
+                <Label htmlFor="new-repeatWeekly" className="cursor-pointer font-normal">
+                  Repeat weekly, same day and time
+                </Label>
+              </div>
+              {repeatWeekly && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="new-repeatUntil">Repeat until</Label>
+                  <Input id="new-repeatUntil" name="repeatUntil" type="date" required />
+                </div>
+              )}
             </div>
           )}
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
