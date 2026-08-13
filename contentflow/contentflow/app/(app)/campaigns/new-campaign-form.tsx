@@ -1,24 +1,32 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { createCampaign } from "@/app/actions/campaigns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BriefingAssistant } from "@/components/ai/briefing-assistant";
 
 export function NewCampaignForm() {
   const [state, formAction, pending] = useActionState(createCampaign, undefined);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
+      <BriefingAssistant
+        onUse={(text) => {
+          if (descriptionRef.current) descriptionRef.current.value = text;
+        }}
+      />
+      <form action={formAction} className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name">Name</Label>
         <Input id="name" name="name" placeholder="e.g. Summer launch" required />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="description">Description</Label>
-        <Textarea id="description" name="description" placeholder="Optional" />
+        <Textarea ref={descriptionRef} id="description" name="description" placeholder="Optional" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
@@ -38,6 +46,7 @@ export function NewCampaignForm() {
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? "Creating..." : "Create campaign"}
       </Button>
-    </form>
+      </form>
+    </div>
   );
 }
