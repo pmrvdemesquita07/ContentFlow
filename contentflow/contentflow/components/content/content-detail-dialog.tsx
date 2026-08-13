@@ -26,6 +26,8 @@ import { PLATFORM_OPTIONS, STATUS_OPTIONS, TYPE_OPTIONS } from "./options";
 import { TaskList } from "./task-list";
 import { MediaSection } from "./media-section";
 import { ContentMetrics } from "./content-metrics";
+import { CaptionAssistant } from "./caption-assistant";
+import type { ContentType } from "@/lib/generated/prisma/enums";
 
 export function ContentDetailDialog({
   content,
@@ -38,6 +40,8 @@ export function ContentDetailDialog({
   const updateWithId = updateContent.bind(null, content.id);
   const [state, formAction, pending] = useActionState(updateWithId, undefined);
   const [platforms, setPlatforms] = useState<string[]>(content.platforms);
+  const [body, setBody] = useState(content.body ?? "");
+  const [type, setType] = useState(content.type);
 
   async function handleDelete() {
     if (!confirm(`Delete "${content.title}"? This can't be undone.`)) return;
@@ -66,7 +70,8 @@ export function ContentDetailDialog({
             <ContentMetrics content={content} />
           </TabsContent>
 
-          <TabsContent value="details">
+          <TabsContent value="details" className="flex flex-col gap-4">
+            <CaptionAssistant contentType={type} onUse={(text) => setBody(text)} />
             <form action={formAction} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="title">Title</Label>
@@ -74,12 +79,22 @@ export function ContentDetailDialog({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="body">Body</Label>
-                <Textarea id="body" name="body" defaultValue={content.body ?? ""} rows={4} />
+                <Textarea
+                  id="body"
+                  name="body"
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={4}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="type">Type</Label>
-                  <Select name="type" defaultValue={content.type}>
+                  <Select
+                    name="type"
+                    defaultValue={content.type}
+                    onValueChange={(v) => setType(v as ContentType)}
+                  >
                     <SelectTrigger id="type" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
