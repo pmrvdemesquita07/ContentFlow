@@ -162,10 +162,26 @@
   }
 }
 
+/* Media kit: the profile band repeats at the top of every printed page (so a
+   brand reading page 4 of the PDF still knows whose numbers those are), but
+   would just be noise repeated down the scrolling page on screen. */
+.print-only {
+  display: none;
+}
+
+@page {
+  /* The media kit prints borderless (the on-screen card frame is dropped), so
+     the page itself has to supply the margin the printed document needs. */
+  margin: 12mm;
+}
+
 @media print {
   aside,
   .print-hide {
     display: none !important;
+  }
+  .print-only {
+    display: flex;
   }
   main {
     padding: 0 !important;
