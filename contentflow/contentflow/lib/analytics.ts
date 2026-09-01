@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { parseHashtags } from "@/lib/text-parse";
+import { interactionsOf } from "@/lib/metrics";
 import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 import type { ResolvedRange } from "@/lib/date-range";
 
@@ -30,10 +31,6 @@ function addMetric<T extends Totals>(acc: T, m: Totals) {
   acc.exits += m.exits;
   acc.tapsForward += m.tapsForward;
   return acc;
-}
-
-function interactionsOf(m: Totals) {
-  return m.likes + m.comments + m.shares + m.saved + m.replies;
 }
 
 /** Interactions / views (video plays, else impressions, else reach) - null when there's nothing to divide by. */
