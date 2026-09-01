@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
-import type { ContentStatus } from "@/lib/generated/prisma/enums";
+import { interactionsOf, latestSnapshotPerPlatform } from "@/lib/metrics";
+import type { ContentStatus, ContentType } from "@/lib/generated/prisma/enums";
 
 export { DASHBOARD_RANGES, resolveDateRange } from "@/lib/date-range";
 export type { DashboardRangeKey, ResolvedRange } from "@/lib/date-range";
@@ -8,18 +9,17 @@ import type { ResolvedRange } from "@/lib/date-range";
 const ENGAGEMENT_ALERT_THRESHOLD = 500;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function dayKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+/** Stories and reels are counted on their own: lumping them into "posts
+ * published" makes the number disagree with what Instagram shows, since 40
+ * stories in a week would read as 40 posts. */
+function formatOf(type: ContentType): "posts" | "stories" | "reels" {
+  if (type === "story") return "stories";
+  if (type === "reel") return "reels";
+  return "posts";
 }
 
-function interactionsOf(m: {
-  likes: number;
-  comments: number;
-  shares: number;
-  saved: number;
-  replies: number;
-}) {
-  return m.likes + m.comments + m.shares + m.saved + m.replies;
+function dayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
 
 function startOfDay(d: Date) {
@@ -32,6 +32,52 @@ function startOfDay(d: Date) {
 function growthPercent(current: number, previous: number): number | null {
   if (previous === 0) return current > 0 ? null : 0;
   return ((current - previous) / previous) * 100;
+}
+
+type PeriodMetric = {
+  platform: string;
+  capturedAt: Date;
+  reach: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saved: number;
+  replies: number;
+};
+
+type PeriodContent = { type: ContentType; metrics: PeriodMetric[] };
+
+/**
+ * Totals for one window of published content.
+ *
+ * `reach` is the sum of each post's own reach. That is NOT the number of
+ * unique people reached: someone who saw four of your posts is counted in all
+ * four. A deduplicated figure only exists as a separate account-level insight
+ * the platforms report for fixed periods, which we don't sync - so the UI has
+ * to say "summed across posts" rather than imply unique people.
+ */
+function summarisePeriod(contents: PeriodContent[]) {
+  const totals = {
+    posts: 0,
+    stories: 0,
+    reels: 0,
+    interactions: 0,
+    reach: 0,
+    publishedWithMetrics: 0,
+  };
+
+  for (const content of contents) {
+    totals[formatOf(content.type)] += 1;
+
+    const latest = latestSnapshotPerPlatform(content.metrics);
+    if (latest.length > 0) totals.publishedWithMetrics += 1;
+    for (const metric of latest) {
+      totals.interactions += interactionsOf(metric);
+      totals.reach += metric.reach;
+    }
+  }
+
+  return totals;
 }
 
 /**
@@ -50,7 +96,7 @@ export async function getDashboardOverview(brandId: string, range: ResolvedRange
   const periodLength = range.end.getTime() - range.start.getTime();
   const previousPeriodStart = new Date(range.start.getTime() - periodLength);
 
-  const [topPerformersRaw, campaigns, tasks, calendarItems, currentPeriodMetrics, previousPeriodMetrics] =
+  const [topPerformersRaw, campaigns, tasks, calendarItems, currentPeriodContent, previousPeriodContent] =
     await Promise.all([
       prisma.content.findMany({
         where: { brandId, publishedAt: { gte: range.start, lte: range.end }, metrics: { some: {} } },
@@ -75,11 +121,17 @@ export async function getDashboardOverview(brandId: string, range: ResolvedRange
         orderBy: { scheduledAt: "asc" },
         select: { id: true, title: true, type: true, status: true, scheduledAt: true, publishedAt: true },
       }),
-      prisma.metric.findMany({
-        where: { content: { brandId }, capturedAt: { gte: range.start, lte: range.end } },
+      // Windowed by when the content was *published*, not when we happened to
+      // sync it. Syncing is what fills `capturedAt`, so filtering on that made
+      // "last 7 days" mean "whatever we re-synced this week" - every post ever
+      // published if a sync ran, and nothing at all if one didn't.
+      prisma.content.findMany({
+        where: { brandId, publishedAt: { gte: range.start, lte: range.end } },
+        select: { id: true, type: true, metrics: true },
       }),
-      prisma.metric.findMany({
-        where: { content: { brandId }, capturedAt: { gte: previousPeriodStart, lt: range.start } },
+      prisma.content.findMany({
+        where: { brandId, publishedAt: { gte: previousPeriodStart, lt: range.start } },
+        select: { id: true, type: true, metrics: true },
       }),
     ]);
 
@@ -119,25 +171,18 @@ export async function getDashboardOverview(brandId: string, range: ResolvedRange
     return true;
   });
 
-  const sumCurrent = currentPeriodMetrics.reduce(
-    (acc, m) => ({
-      interactions: acc.interactions + interactionsOf(m),
-      reach: acc.reach + m.reach,
-      posts: acc.posts,
-    }),
-    { interactions: 0, reach: 0, posts: 0 }
-  );
-  sumCurrent.posts = new Set(currentPeriodMetrics.map((m) => m.contentId)).size;
-
-  const sumPrevious = previousPeriodMetrics.reduce(
-    (acc, m) => ({ interactions: acc.interactions + interactionsOf(m), reach: acc.reach + m.reach }),
-    { interactions: 0, reach: 0 }
-  );
+  const sumCurrent = summarisePeriod(currentPeriodContent);
+  const sumPrevious = summarisePeriod(previousPeriodContent);
 
   const currentPeriod = {
     posts: sumCurrent.posts,
+    stories: sumCurrent.stories,
+    reels: sumCurrent.reels,
     interactions: sumCurrent.interactions,
     reach: sumCurrent.reach,
+    avgReachPerPost: sumCurrent.publishedWithMetrics
+      ? Math.round(sumCurrent.reach / sumCurrent.publishedWithMetrics)
+      : 0,
     interactionsGrowth: growthPercent(sumCurrent.interactions, sumPrevious.interactions),
     reachGrowth: growthPercent(sumCurrent.reach, sumPrevious.reach),
   };
@@ -165,7 +210,7 @@ export async function getDashboardOverview(brandId: string, range: ResolvedRange
 export async function getDashboardData(brandId: string, range: ResolvedRange) {
   const { start, end } = range;
 
-  const [statusCounts, contentWithMetrics, socialAccounts, accountSnapshots, periodMetrics] =
+  const [statusCounts, contentWithMetrics, socialAccounts, accountSnapshots] =
     await Promise.all([
       prisma.content.groupBy({
         by: ["status"],
@@ -182,10 +227,6 @@ export async function getDashboardData(brandId: string, range: ResolvedRange) {
         where: { socialAccount: { brandId }, capturedAt: { gte: start, lte: end } },
         orderBy: { capturedAt: "asc" },
       }),
-      prisma.metric.findMany({
-        where: { content: { brandId }, capturedAt: { gte: start, lte: end } },
-        orderBy: { capturedAt: "asc" },
-      }),
     ]);
 
   const counts: Record<ContentStatus, number> = {
@@ -199,15 +240,8 @@ export async function getDashboardData(brandId: string, range: ResolvedRange) {
 
   const highEngagement = contentWithMetrics
     .map((content) => {
-      const latestByPlatform = new Map<string, (typeof content.metrics)[number]>();
-      for (const metric of content.metrics) {
-        const current = latestByPlatform.get(metric.platform);
-        if (!current || metric.capturedAt > current.capturedAt) {
-          latestByPlatform.set(metric.platform, metric);
-        }
-      }
-      const interactions = [...latestByPlatform.values()].reduce(
-        (sum, m) => sum + m.likes + m.comments + m.shares + m.saved + m.replies,
+      const interactions = latestSnapshotPerPlatform(content.metrics).reduce(
+        (sum, m) => sum + interactionsOf(m),
         0
       );
       return { content, interactions };
@@ -239,18 +273,19 @@ export async function getDashboardData(brandId: string, range: ResolvedRange) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([day, followers]) => ({ label: day, value: followers }));
 
-  const latestMetricPerContentDay = new Map<string, (typeof periodMetrics)[number]>();
-  for (const m of periodMetrics) {
-    const key = `${m.contentId}:${m.platform}:${dayKey(m.capturedAt)}`;
-    const existing = latestMetricPerContentDay.get(key);
-    if (!existing || m.capturedAt > existing.capturedAt) {
-      latestMetricPerContentDay.set(key, m);
-    }
-  }
+  // Bucketed by the day each post was *published*, so the line reads "what
+  // the content published that day earned" - the same rule the Analytics page
+  // uses. Bucketing by capturedAt instead drew every post's lifetime total on
+  // whichever day a sync happened to run, which made the chart climb forever
+  // and disagree with Analytics for the same brand and period.
   const engagementByDay = new Map<string, number>();
-  for (const m of latestMetricPerContentDay.values()) {
-    const key = dayKey(m.capturedAt);
-    const interactions = m.likes + m.comments + m.shares + m.saved + m.replies;
+  for (const content of contentWithMetrics) {
+    if (!content.publishedAt) continue;
+    const key = dayKey(content.publishedAt);
+    const interactions = latestSnapshotPerPlatform(content.metrics).reduce(
+      (sum, m) => sum + interactionsOf(m),
+      0
+    );
     engagementByDay.set(key, (engagementByDay.get(key) ?? 0) + interactions);
   }
   const engagementSeries = [...engagementByDay.entries()]
