@@ -71,7 +71,12 @@ export function ContentDetailDialog({
           </TabsContent>
 
           <TabsContent value="details" className="flex flex-col gap-4">
-            <CaptionAssistant contentType={type} onUse={(text) => setBody(text)} />
+            <CaptionAssistant
+              contentType={type}
+              campaignId={content.campaignId ?? undefined}
+              platforms={platforms}
+              onUse={(text) => setBody(text)}
+            />
             <form action={formAction} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="title">Title</Label>
