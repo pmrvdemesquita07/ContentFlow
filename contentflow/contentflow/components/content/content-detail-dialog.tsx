@@ -51,7 +51,7 @@ export function ContentDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <button type="button" onClick={() => setOpen(true)} className="text-left">
+      <button type="button" onClick={() => setOpen(true)} className="w-full min-w-0 text-left">
         {children}
       </button>
       <DialogContent className="sm:max-w-2xl">
