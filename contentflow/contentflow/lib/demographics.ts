@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/db";
 import type { SocialPlatform } from "@/lib/generated/prisma/enums";
 
-export type DemographicItem = { label: string; percent: number };
+/** `value` is the raw follower count behind the percentage - the media kit
+ * lists countries and cities the way brands expect to read them ("PT 2 855"),
+ * not as bare percentages. */
+export type DemographicItem = { label: string; percent: number; value: number };
 
 export type BrandDemographics = {
   gender: DemographicItem[];
@@ -25,7 +28,11 @@ function toPercentItems(items: RawItem[], labelFor: (label: string) => string, l
   if (total === 0) return [];
   const sorted = [...items].sort((a, b) => b.value - a.value);
   const limited = limit ? sorted.slice(0, limit) : sorted;
-  return limited.map((i) => ({ label: labelFor(i.label), percent: (i.value / total) * 100 }));
+  return limited.map((i) => ({
+    label: labelFor(i.label),
+    percent: (i.value / total) * 100,
+    value: i.value,
+  }));
 }
 
 /**
