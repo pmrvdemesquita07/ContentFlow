@@ -84,6 +84,13 @@ export async function updateContentStatus(id: string, status: ContentStatus) {
   revalidateViews();
 }
 
+/** Calendar drag-and-drop: move a post to a different day/time, nothing else changes. */
+export async function moveContent(id: string, scheduledAt: Date) {
+  await requireUser();
+  await prisma.content.update({ where: { id }, data: { scheduledAt } });
+  revalidateViews();
+}
+
 export async function updateContent(
   id: string,
   _prevState: { error?: string } | undefined,
