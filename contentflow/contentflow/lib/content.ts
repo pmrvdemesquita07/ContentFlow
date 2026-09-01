@@ -17,6 +17,15 @@ export function getContentByStatuses(brandId: string, statuses: ContentStatus[])
   });
 }
 
+/** Ideas Bank: same "idea" rows as getContentByStatuses, plus the link preview (if captured from a URL). */
+export function getIdeas(brandId: string) {
+  return prisma.content.findMany({
+    where: { brandId, status: "idea" },
+    orderBy: { updatedAt: "desc" },
+    include: { ...WITH_RELATIONS.include, ideaSource: true },
+  });
+}
+
 export type ContentFilters = {
   statuses: ContentStatus[];
   /** Format (post/story/reel/video/carousel); omit for every format. */
