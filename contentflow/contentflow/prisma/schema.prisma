@@ -581,6 +581,11 @@ model Content {
   body        String?       @db.Text
   type        ContentType
   status      ContentStatus @default(idea)
+  /// Only meaningful while status is "idea" - a lightweight rascunho/aprovada
+  /// split within the Ideas Bank that doesn't touch ContentStatus (which
+  /// Dashboard/Posts/Calendar all already filter and count by). Ignored once
+  /// the idea is turned into a draft/scheduled post.
+  approved    Boolean       @default(false)
   platforms   SocialPlatform[]
   scheduledAt DateTime?
   publishedAt DateTime?
@@ -616,12 +621,31 @@ model Content {
   messages  Message[]
   comments  Comment[]
   calendarEvents CalendarEvent[]
+  ideaSource IdeaSource?
 
   @@unique([brandId, externalId])
   @@index([workspaceId, status])
   @@index([brandId, status])
   @@index([scheduledAt])
   @@map("content")
+}
+
+/// The fetched preview for an idea captured by pasting a link - kept off
+/// Content itself (only a small fraction of ideas come from a link) and
+/// fetched once, not on every render. One-to-one and optional: absent for
+/// ideas captured as plain text or an uploaded image.
+model IdeaSource {
+  id                 String   @id @default(uuid())
+  contentId          String   @unique
+  sourceUrl          String
+  previewTitle       String?
+  previewDescription String?  @db.Text
+  previewImageUrl    String?
+  fetchedAt          DateTime @default(now())
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("idea_sources")
 }
 
 /// contentId is optional - a task is a reminder first, only sometimes tied
