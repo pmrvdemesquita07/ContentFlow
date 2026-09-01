@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { ContentStatus, ContentType } from "@/lib/generated/prisma/enums";
+import type { ContentStatus, ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 
 const WITH_RELATIONS = {
   include: {
@@ -63,15 +63,37 @@ export function getScheduledContent(brandId: string) {
   });
 }
 
+export type CalendarContentFilters = {
+  /** Only content that has this platform among Content.platforms. */
+  platform?: SocialPlatform;
+  campaignId?: string;
+};
+
 /** Everything that belongs on a calendar: future scheduled posts and already-published ones. */
-export function getCalendarContent(brandId: string) {
+export function getCalendarContent(brandId: string, filters: CalendarContentFilters = {}) {
   return prisma.content.findMany({
     where: {
       brandId,
       OR: [{ scheduledAt: { not: null } }, { publishedAt: { not: null } }],
+      ...(filters.platform ? { platforms: { has: filters.platform } } : {}),
+      ...(filters.campaignId ? { campaignId: filters.campaignId } : {}),
     },
     orderBy: { publishedAt: "asc" },
     ...WITH_RELATIONS,
+  });
+}
+
+/** Studio-only aggregate: the same calendar content, across every brand in the workspace. */
+export function getWorkspaceCalendarContent(workspaceId: string, filters: CalendarContentFilters = {}) {
+  return prisma.content.findMany({
+    where: {
+      workspaceId,
+      OR: [{ scheduledAt: { not: null } }, { publishedAt: { not: null } }],
+      ...(filters.platform ? { platforms: { has: filters.platform } } : {}),
+      ...(filters.campaignId ? { campaignId: filters.campaignId } : {}),
+    },
+    orderBy: { publishedAt: "asc" },
+    include: { ...WITH_RELATIONS.include, brand: { select: { id: true, name: true } } },
   });
 }
 
