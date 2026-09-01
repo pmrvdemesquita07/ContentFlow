@@ -72,6 +72,27 @@ export function getScheduledContent(brandId: string) {
   });
 }
 
+/** Social Hub's "Auto-Repost" tab: the upcoming queue plus a handful of recently
+ * published posts, so a just-published item still shows a "Done" row instead
+ * of just disappearing. */
+export async function getAutoRepostQueue(brandId: string) {
+  const [scheduled, done] = await Promise.all([
+    prisma.content.findMany({
+      where: { brandId, status: "scheduled", scheduledAt: { not: null } },
+      orderBy: { scheduledAt: "asc" },
+      take: 20,
+      ...WITH_RELATIONS,
+    }),
+    prisma.content.findMany({
+      where: { brandId, status: "published", publishedAt: { not: null } },
+      orderBy: { publishedAt: "desc" },
+      take: 5,
+      ...WITH_RELATIONS,
+    }),
+  ]);
+  return { scheduled, done };
+}
+
 export type CalendarContentFilters = {
   /** Only content that has this platform among Content.platforms. */
   platform?: SocialPlatform;
