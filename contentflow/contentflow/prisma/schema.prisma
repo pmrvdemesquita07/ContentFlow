@@ -131,6 +131,8 @@ enum AssistantType {
   viral_ideas
   briefing
   quick_schedule
+  media_kit_pitch
+  pricing_suggestion
 }
 
 /// Mirrors a Supabase Auth user (auth.users). `id` is the same UUID Supabase
