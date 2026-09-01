@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Logo } from "@/components/brand/logo";
 import { ExportMediaKitButton } from "./export-button";
+import { PitchAssistant } from "@/components/media-kit/pitch-assistant";
 import type { SocialPlatform } from "@/lib/generated/prisma/enums";
 
 const PLATFORM_LABELS: Record<SocialPlatform, string> = {
@@ -82,6 +83,8 @@ export default async function MediaKitPage() {
         </div>
         <ExportMediaKitButton />
       </div>
+
+      <PitchAssistant />
 
       {/* Page 1 - one cover per connected account, each with that
           platform's own profile photo and follower count - never a
