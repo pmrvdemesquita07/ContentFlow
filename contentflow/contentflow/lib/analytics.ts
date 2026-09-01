@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { parseHashtags } from "@/lib/text-parse";
 import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 import type { ResolvedRange } from "@/lib/date-range";
 
@@ -69,6 +70,7 @@ export async function getAnalyticsData(
           select: {
             id: true,
             title: true,
+            body: true,
             campaignId: true,
             campaign: { select: { name: true } },
             type: true,
@@ -135,7 +137,10 @@ export async function getAnalyticsData(
   };
 
   const byCampaign = new Map<string, { campaignId: string; campaignName: string | null } & Totals>();
-  const byType = new Map<ContentType, Totals>();
+  // `posts` counts how many posts fed each row - the media kit's per-format
+  // "Avg. reach / Avg. likes" cards divide by it, so it has to travel with
+  // the totals rather than being re-derived from perPost.
+  const byType = new Map<ContentType, Totals & { posts: number }>();
   for (const m of inRange) {
     const campaignKey = m.content.campaignId ?? "uncategorized";
     const campaignRow = byCampaign.get(campaignKey) ?? {
@@ -146,8 +151,9 @@ export async function getAnalyticsData(
     addMetric(campaignRow, m);
     byCampaign.set(campaignKey, campaignRow);
 
-    const typeRow = byType.get(m.content.type) ?? { ...EMPTY_TOTALS };
+    const typeRow = byType.get(m.content.type) ?? { ...EMPTY_TOTALS, posts: 0 };
     addMetric(typeRow, m);
+    typeRow.posts += 1;
     byType.set(m.content.type, typeRow);
   }
 
@@ -230,6 +236,11 @@ export async function getAnalyticsData(
         externalUrl: m.content.externalUrl,
         mentions: m.content.mentions,
         locationName: m.content.locationName,
+        publishedAt: m.content.publishedAt,
+        // Instagram doesn't return a structured hashtag list on this API, so
+        // this counts what's actually written in the caption - same rule the
+        // sync pipeline uses for mentions.
+        hashtags: parseHashtags(m.content.body).length,
         likes: m.likes,
         comments: m.comments,
         shares: m.shares,
