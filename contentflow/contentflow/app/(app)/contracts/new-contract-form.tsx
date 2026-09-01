@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useRef, useState, useTransition } from "react";
 import { createContract } from "@/app/actions/contracts";
+import { PricingAssistant } from "@/components/contracts/pricing-assistant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,12 +20,22 @@ export function NewContractForm({
   defaultCreatorId?: string;
   defaultTitle?: string;
 }) {
-  const [state, formAction, pending] = useActionState(createContract, undefined);
+  const [state, setState] = useState<{ error?: string } | undefined>(undefined);
+  const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const [creatorId, setCreatorId] = useState(defaultCreatorId ?? "");
 
-  useEffect(() => {
-    if (state && !state.error) formRef.current?.reset();
-  }, [state]);
+  function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      const result = await createContract(undefined, formData);
+      setState(result);
+      if (!result?.error) {
+        formRef.current?.reset();
+        setCreatorId("");
+      }
+    });
+  }
 
   if (creators.length === 0) {
     return (
@@ -39,7 +50,7 @@ export function NewContractForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={handleSubmit} className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="creatorId">Creator</Label>
@@ -47,7 +58,8 @@ export function NewContractForm({
             id="creatorId"
             name="creatorId"
             required
-            defaultValue={defaultCreatorId ?? ""}
+            value={creatorId}
+            onChange={(e) => setCreatorId(e.target.value)}
             className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <option value="">Select a creator...</option>
@@ -74,6 +86,14 @@ export function NewContractForm({
           </select>
         </div>
       </div>
+      {creatorId && (
+        <PricingAssistant
+          creatorId={creatorId}
+          onUseAmount={(amount) => {
+            if (amountRef.current) amountRef.current.value = String(amount);
+          }}
+        />
+      )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="title">Title</Label>
         <Input
@@ -87,7 +107,16 @@ export function NewContractForm({
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="amount">Amount</Label>
-          <Input id="amount" name="amount" type="number" step="0.01" min="0" placeholder="500.00" required />
+          <Input
+            id="amount"
+            name="amount"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="500.00"
+            required
+            ref={amountRef}
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="startDate">Start date</Label>
