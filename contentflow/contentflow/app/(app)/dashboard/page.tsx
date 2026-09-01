@@ -132,32 +132,57 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Snapshot over the selected range, compared against the same-length period before it. */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {/* Snapshot of content *published* in the selected range, compared
+          against the same-length period before it. Formats are counted
+          separately so 40 stories don't read as 40 posts. */}
+      <p className="-mb-2 text-xs text-muted-foreground">
+        Published in the last {resolvedRange.label}
+      </p>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Posts published ({resolvedRange.label})</p>
+            <p className="text-xs text-muted-foreground">Posts</p>
             <p className="text-2xl font-semibold">{overview.currentPeriod.posts}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Interactions ({resolvedRange.label})</p>
+            <p className="text-xs text-muted-foreground">Stories</p>
+            <p className="text-2xl font-semibold">{overview.currentPeriod.stories}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-xs text-muted-foreground">Reels</p>
+            <p className="text-2xl font-semibold">{overview.currentPeriod.reels}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-xs text-muted-foreground">Interactions</p>
             <div className="flex items-baseline gap-2">
               <p className="text-2xl font-semibold">
                 {overview.currentPeriod.interactions.toLocaleString()}
               </p>
               <GrowthTag value={overview.currentPeriod.interactionsGrowth} />
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">likes + comments + saves + shares</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Reach ({resolvedRange.label})</p>
+            <p className="text-xs text-muted-foreground">Reach</p>
             <div className="flex items-baseline gap-2">
               <p className="text-2xl font-semibold">{overview.currentPeriod.reach.toLocaleString()}</p>
               <GrowthTag value={overview.currentPeriod.reachGrowth} />
             </div>
+            {/* Said plainly: this is the sum of each post's reach, so someone
+                who saw four posts is in there four times. Instagram's own
+                "accounts reached" is deduplicated and will read lower. */}
+            <p className="mt-1 text-xs text-muted-foreground">
+              summed per post · {overview.currentPeriod.avgReachPerPost.toLocaleString()} avg. per
+              post
+            </p>
           </CardContent>
         </Card>
       </div>
