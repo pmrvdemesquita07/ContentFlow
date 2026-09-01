@@ -12,6 +12,8 @@ import { canAccessAiReply, canAccessAiBriefing } from "@/lib/ai/access";
 import { getInternalTrends } from "@/lib/trends-internal";
 import { resolveDateRange } from "@/lib/date-range";
 import { getThreadForMatch } from "@/lib/threads";
+import { getSocialAccountsForBrand } from "@/lib/social";
+import { getAnalyticsData } from "@/lib/analytics";
 import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 
 export type CaptionSuggestion = { text: string; label: string };
@@ -32,13 +34,21 @@ export async function suggestCaptions(
   if (!topic) return { error: "Describe the topic of the post first." };
   const contentType = String(formData.get("contentType") ?? "post").trim();
   const hashtags = String(formData.get("hashtags") ?? "").trim();
+  const campaignId = String(formData.get("campaignId") ?? "").trim() || null;
+  const platforms = formData.getAll("platforms").map((p) => String(p)).filter(Boolean);
 
   const usage = await checkAiUsage(ctx.workspace.id, ctx.workspace.plan);
   if (!usage.allowed) return { error: usageLimitError(usage.limit) };
 
-  const [brandContext, trends] = await Promise.all([
+  const [brandContext, trends, campaign] = await Promise.all([
     buildBrandContext(ctx.brand.id),
     getInternalTrends(ctx.brand.id, resolveDateRange({})),
+    campaignId
+      ? prisma.campaign.findFirst({
+          where: { id: campaignId, brandId: ctx.brand.id },
+          select: { name: true, description: true },
+        })
+      : null,
   ]);
 
   const topTrends = [...trends.byHashtag, ...trends.byFormat]
@@ -59,6 +69,16 @@ export async function suggestCaptions(
   if (brandSection) systemParts.push(brandSection);
   if (topTrends.length > 0) {
     systemParts.push(`Relevant internal trends for this brand right now: ${topTrends.join(", ")}`);
+  }
+  if (campaign) {
+    systemParts.push(
+      `This post is part of the campaign "${campaign.name}"${campaign.description ? `: ${campaign.description}` : ""}. Keep the caption consistent with that campaign's angle.`
+    );
+  }
+  if (platforms.length > 0) {
+    systemParts.push(
+      `Target platform(s): ${platforms.join(", ")}. Match each platform's usual caption length and tone (e.g. TikTok/Reels casual and short, LinkedIn more professional, X terse).`
+    );
   }
   systemParts.push(
     "Given the post topic and format provided by the user, suggest exactly 3 different captions or hooks, each at most 2 sentences, each with a short label naming the approach (e.g. \"Question hook\", \"Contradiction hook\", \"Direct storytelling\")."
@@ -112,7 +132,7 @@ export async function suggestCaptions(
   await logAssistantCall(
     ctx.workspace.id,
     "captions",
-    JSON.stringify({ contentType, topic, hashtags }),
+    JSON.stringify({ contentType, topic, hashtags, campaign: campaign?.name ?? null, platforms }),
     JSON.stringify(suggestions)
   );
 
@@ -353,4 +373,159 @@ export async function quickScheduleContent(
   ["/ideas", "/posts", "/calendar"].forEach((path) => revalidatePath(path));
 
   return { error: undefined, created: { title: parsed.title || text, type, scheduledAt: scheduledAt.toISOString() } };
+}
+
+/**
+ * A short pitch/bio blurb built from the brand's own real, already-synced
+ * numbers (followers, engagement rate, best-performing format) plus its
+ * voice - never invented figures. Purely a suggestion: it's shown for the
+ * user to copy wherever they need it (a proposal, an email, their Discover
+ * bio) rather than written straight into any field, since discoveryBio is
+ * specifically the creator-marketplace profile and Media Kit works for
+ * every workspace type.
+ */
+export async function suggestMediaKitPitch(): Promise<{ error?: string; pitch?: string }> {
+  const user = await requireUser();
+  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  if (!ctx?.brand) return { error: "Finish onboarding first." };
+
+  const usage = await checkAiUsage(ctx.workspace.id, ctx.workspace.plan);
+  if (!usage.allowed) return { error: usageLimitError(usage.limit) };
+
+  const [accounts, analytics, brandContext] = await Promise.all([
+    getSocialAccountsForBrand(ctx.brand.id),
+    getAnalyticsData(ctx.brand.id, resolveDateRange({ range: "90d" })),
+    buildBrandContext(ctx.brand.id),
+  ]);
+  const connected = accounts.filter((a) => a.status === "connected");
+  if (connected.length === 0) return { error: "Connect a social account first." };
+
+  const totalFollowers = connected.reduce((sum, a) => sum + (a.followersCount ?? 0), 0);
+  const byFormat = new Map<string, { total: number; count: number }>();
+  for (const p of analytics.perPost) {
+    const row = byFormat.get(p.type) ?? { total: 0, count: 0 };
+    row.total += p.interactions;
+    row.count += 1;
+    byFormat.set(p.type, row);
+  }
+  const bestFormat = [...byFormat.entries()].sort((a, b) => b[1].total / b[1].count - a[1].total / a[1].count)[0];
+
+  const facts = [
+    `Brand: ${ctx.brand.name}`,
+    `Total followers across connected accounts: ${totalFollowers.toLocaleString()}`,
+    `Engagement rate (last 90 days): ${analytics.engagementRates.byFollowers?.toFixed(1) ?? "unknown"}%`,
+    `Platforms: ${connected.map((a) => a.platform).join(", ")}`,
+    bestFormat && `Best-performing format: ${bestFormat[0]}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const systemParts = [
+    "You write a short media-kit pitch (2-3 sentences) for a brand to send to potential partners, in European Portuguese (Portugal). Use only the real numbers given below - never invent a figure. Confident, direct, no empty marketing jargon.",
+  ];
+  const brandSection = brandContextToPromptSection(brandContext);
+  if (brandSection) systemParts.push(brandSection);
+
+  let pitch: string;
+  try {
+    const response = await anthropic.messages.create({
+      model: AI_MODEL,
+      max_tokens: 512,
+      system: systemParts.join("\n\n"),
+      output_config: { effort: "low" },
+      messages: [{ role: "user", content: facts }],
+    });
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") throw new Error("no text block");
+    pitch = textBlock.text.trim();
+  } catch (err) {
+    console.error("suggestMediaKitPitch failed", err);
+    return { error: "Couldn't generate a pitch right now. Please try again." };
+  }
+
+  await incrementAiUsage(ctx.workspace.id);
+  await logAssistantCall(ctx.workspace.id, "media_kit_pitch", facts, pitch);
+
+  return { error: undefined, pitch };
+}
+
+export type PricingSuggestion = { min: number; max: number; currency: string; reasoning: string };
+
+/**
+ * A starting price range for a new contract with this creator, grounded in
+ * their own past Contract.amount history in this workspace when there is
+ * any - the model is told explicitly when there's none, so it doesn't
+ * quietly pretend to know more than it does.
+ */
+export async function suggestPricingSuggestion(
+  creatorId: string
+): Promise<{ error?: string; suggestion?: PricingSuggestion }> {
+  const user = await requireUser();
+  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  if (!ctx?.brand) return { error: "Finish onboarding first." };
+
+  const usage = await checkAiUsage(ctx.workspace.id, ctx.workspace.plan);
+  if (!usage.allowed) return { error: usageLimitError(usage.limit) };
+
+  const creator = await prisma.creator.findFirst({
+    where: { id: creatorId, workspaceId: ctx.workspace.id },
+    select: { name: true },
+  });
+  if (!creator) return { error: "Creator not found." };
+
+  const pastContracts = await prisma.contract.findMany({
+    where: { creatorId, workspaceId: ctx.workspace.id },
+    select: { title: true, amount: true, currency: true, status: true, startDate: true },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  const history =
+    pastContracts.length === 0
+      ? "No past contracts with this creator in this workspace."
+      : pastContracts
+          .map((c) => `- "${c.title}": ${c.amount} ${c.currency} (${c.status})`)
+          .join("\n");
+
+  const systemParts = [
+    "You suggest a fair starting price range (in EUR) for a new content-creator partnership contract, based only on the creator's own past contract history given below. If there is no history, say so explicitly in the reasoning and give a cautious, general estimate instead of pretending to have data.",
+  ];
+
+  let suggestion: PricingSuggestion;
+  try {
+    const response = await anthropic.messages.create({
+      model: AI_MODEL,
+      max_tokens: 512,
+      system: systemParts.join("\n\n"),
+      output_config: {
+        effort: "low",
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: {
+              min: { type: "number" },
+              max: { type: "number" },
+              reasoning: { type: "string" },
+            },
+            required: ["min", "max", "reasoning"],
+            additionalProperties: false,
+          },
+        },
+      },
+      messages: [{ role: "user", content: `Creator: ${creator.name}\n\nPast contracts:\n${history}` }],
+    });
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") throw new Error("no text block");
+    const parsed = JSON.parse(textBlock.text) as { min: number; max: number; reasoning: string };
+    suggestion = { min: parsed.min, max: parsed.max, currency: "EUR", reasoning: parsed.reasoning };
+  } catch (err) {
+    console.error("suggestPricingSuggestion failed", err);
+    return { error: "Couldn't generate a suggestion right now. Please try again." };
+  }
+
+  await incrementAiUsage(ctx.workspace.id);
+  await logAssistantCall(ctx.workspace.id, "pricing_suggestion", history, JSON.stringify(suggestion));
+
+  return { error: undefined, suggestion };
 }
