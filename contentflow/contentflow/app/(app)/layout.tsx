@@ -56,7 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <header className="fixed inset-x-0 top-0 z-30 flex items-center border-b bg-background p-3 md:hidden">
+      <header className="print-hide fixed inset-x-0 top-0 z-30 flex items-center border-b bg-background p-3 md:hidden">
         <Logo size="sm" />
       </header>
 
