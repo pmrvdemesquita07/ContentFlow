@@ -8,6 +8,10 @@ export type ContentWithRelations = ContentGetPayload<{
   include: { tasks: true; media: true; metrics: true };
 }>;
 
+export type IdeaWithSource = ContentGetPayload<{
+  include: { tasks: true; media: true; metrics: true; ideaSource: true };
+}>;
+
 export type BrandWithVoice = BrandGetPayload<{
   include: { brandVoice: true };
 }>;
