@@ -110,6 +110,18 @@ enum MatchStatus {
   withdrawn
 }
 
+enum CalendarEventType {
+  content_approval
+  contract_deadline
+  custom
+}
+
+enum CalendarEventStatus {
+  scheduled
+  done
+  missed
+}
+
 enum AssistantType {
   trends
   comment_reply
@@ -134,6 +146,7 @@ model User {
   content   Content[]
   threadMessages ThreadMessage[]
   reviews   Review[]
+  calendarEvents CalendarEvent[]
 
   @@map("users")
 }
@@ -184,6 +197,7 @@ model Workspace {
   reportSubscriptions ReportSubscription[]
   assistantLogs AssistantLog[]
   aiUsage AiUsage[]
+  calendarEvents CalendarEvent[]
 
   @@map("workspaces")
 }
@@ -217,6 +231,7 @@ model Brand {
   socialAccounts SocialAccount[]
   campaigns     Campaign[]
   tasks         Task[]
+  calendarEvents CalendarEvent[]
 
   @@map("brands")
 }
@@ -246,6 +261,7 @@ model Campaign {
   contracts Contract[]
   reports   Report[]
   reportSubscriptions ReportSubscription[]
+  calendarEvents CalendarEvent[]
 
   @@index([brandId])
   @@map("campaigns")
@@ -275,6 +291,7 @@ model Creator {
   sourceWorkspace Workspace?        @relation("CreatorSourceWorkspace", fields: [sourceWorkspaceId], references: [id], onDelete: SetNull)
   campaigns       CampaignCreator[]
   contracts       Contract[]
+  calendarEvents  CalendarEvent[]
 
   @@index([workspaceId])
   @@index([sourceWorkspaceId])
@@ -317,6 +334,7 @@ model Contract {
   campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   payments  Payment[]
   reviews   Review[]
+  calendarEvents CalendarEvent[]
 
   @@index([workspaceId])
   @@index([creatorId])
@@ -597,6 +615,7 @@ model Content {
   metrics   Metric[]
   messages  Message[]
   comments  Comment[]
+  calendarEvents CalendarEvent[]
 
   @@unique([brandId, externalId])
   @@index([workspaceId, status])
@@ -801,6 +820,51 @@ model AssistantLog {
 
   @@index([workspaceId, createdAt])
   @@map("assistant_logs")
+}
+
+/// Calendar events that are NOT publish dates - those already live on
+/// Content.scheduledAt (Dashboard/Posts/Analytics/Quick Schedule all read
+/// that directly, unchanged). This covers content-approval deadlines and
+/// manual contract reminders, so the Calendar page can merge both sources
+/// into one view without duplicating or migrating what already works.
+/// Contract start/end dates themselves are NOT copied here either - the
+/// Calendar reads Contract.startDate/endDate directly; contractId here is
+/// only for an extra manual reminder someone adds on top (e.g. "confirm
+/// final payment"), not a mirror of the contract's own dates.
+model CalendarEvent {
+  id          String              @id @default(uuid())
+  workspaceId String
+  brandId     String
+  type        CalendarEventType
+  status      CalendarEventStatus @default(scheduled)
+  title       String
+  notes       String?             @db.Text
+  startAt     DateTime
+  endAt       DateTime?
+  allDay      Boolean             @default(false)
+  campaignId  String?
+  contractId  String?
+  creatorId   String?
+  /// Set when this is specifically "approve this post by X" rather than a
+  /// freestanding reminder.
+  contentId   String?
+  createdBy   String              @db.Uuid
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand     Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  contract  Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  creator   Creator?  @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  content   Content?  @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  author    User      @relation(fields: [createdBy], references: [id])
+
+  @@index([workspaceId, startAt])
+  @@index([brandId, startAt])
+  @@index([campaignId])
+  @@index([contractId])
+  @@map("calendar_events")
 }
 
 /// One row per workspace per calendar month - a simple running counter used
