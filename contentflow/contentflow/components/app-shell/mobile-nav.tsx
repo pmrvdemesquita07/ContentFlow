@@ -105,7 +105,7 @@ export function MobileNav({
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="print-hide fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
         {BAR_LINKS.map((link) => (
           <BarItem key={link.href} link={link} active={isLinkActive(pathname, link.href)} />
         ))}
