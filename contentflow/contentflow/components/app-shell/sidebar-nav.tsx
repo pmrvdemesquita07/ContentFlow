@@ -94,16 +94,20 @@ export function SidebarNav({
         <NavItem link={SETTINGS_LINK} active={isLinkActive(pathname, SETTINGS_LINK.href)} />
       </div>
 
-      <div className="mt-4 mb-1 px-2.5 text-xs font-medium text-muted-foreground">Coming soon</div>
-      {SOON_LINKS.map((link) => (
-        <div
-          key={link.label}
-          className="flex cursor-not-allowed items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground/60"
-        >
-          <link.icon className="size-4" />
-          {link.label}
-        </div>
-      ))}
+      {SOON_LINKS.length > 0 && (
+        <>
+          <div className="mt-4 mb-1 px-2.5 text-xs font-medium text-muted-foreground">Coming soon</div>
+          {SOON_LINKS.map((link) => (
+            <div
+              key={link.label}
+              className="flex cursor-not-allowed items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground/60"
+            >
+              <link.icon className="size-4" />
+              {link.label}
+            </div>
+          ))}
+        </>
+      )}
     </nav>
   );
 }
