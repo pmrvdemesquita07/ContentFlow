@@ -66,6 +66,14 @@ export function getCampaignsForWorkspaceOptions(workspaceId: string) {
   });
 }
 
+export function getContractsForWorkspaceOptions(workspaceId: string) {
+  return prisma.contract.findMany({
+    where: { workspaceId },
+    orderBy: { title: "asc" },
+    select: { id: true, title: true },
+  });
+}
+
 export function paidTotal(payments: { amount: unknown; status: string }[]) {
   return payments
     .filter((p) => p.status === "paid")
