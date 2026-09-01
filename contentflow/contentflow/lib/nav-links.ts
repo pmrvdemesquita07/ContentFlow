@@ -60,6 +60,7 @@ export const GROUPS: NavGroup[] = [
       { href: "/posts", label: "Posts", icon: FileText },
       { href: "/calendar", label: "Calendar", icon: Calendar },
       { href: "/media", label: "Media", icon: Image },
+      { href: "/assistants", label: "Assistants", icon: Sparkles },
     ],
   },
   {
@@ -108,7 +109,7 @@ export const GROUPS: NavGroup[] = [
 
 export const SETTINGS_LINK: NavLink = { href: "/settings", label: "Settings", icon: Settings };
 
-export const SOON_LINKS = [{ label: "Assistants", icon: Sparkles }];
+export const SOON_LINKS: { label: string; icon: LucideIcon }[] = [];
 
 export function isLinkVisible(link: NavLink, plan: Plan, workspaceType: WorkspaceType) {
   if (link.minPlan && !planAtLeast(plan, link.minPlan)) return false;
