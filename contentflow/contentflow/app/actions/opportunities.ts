@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import type { MatchStatus, OpportunityStatus, SocialPlatform } from "@/lib/generated/prisma/enums";
 
@@ -51,15 +52,22 @@ export async function createOpportunity(
 }
 
 export async function updateOpportunityStatus(opportunityId: string, status: OpportunityStatus) {
-  await requireUser();
-  await prisma.opportunity.update({ where: { id: opportunityId }, data: { status } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.opportunity.updateMany({
+    where: { id: opportunityId, workspaceId: ctx.workspace.id },
+    data: { status },
+  });
   revalidatePath("/opportunities");
   revalidatePath(`/opportunities/${opportunityId}`);
 }
 
 export async function deleteOpportunity(opportunityId: string) {
-  await requireUser();
-  await prisma.opportunity.delete({ where: { id: opportunityId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.opportunity.deleteMany({
+    where: { id: opportunityId, workspaceId: ctx.workspace.id },
+  });
   revalidatePath("/opportunities");
 }
 
