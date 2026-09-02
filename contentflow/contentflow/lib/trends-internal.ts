@@ -1,11 +1,8 @@
 import { prisma } from "@/lib/db";
+import { interactionsOf } from "@/lib/metrics";
 import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 import type { ResolvedRange } from "@/lib/date-range";
 import { parseHashtags } from "@/lib/text-parse";
-
-function interactionsOf(m: { likes: number; comments: number; shares: number; saved: number; replies: number }) {
-  return m.likes + m.comments + m.shares + m.saved + m.replies;
-}
 
 /** % change vs the previous value; null when there's no baseline to compare against ("new"). */
 function growthPercent(current: number, previous: number): number | null {
