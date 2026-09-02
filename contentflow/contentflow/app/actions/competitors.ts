@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace, planError } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 
@@ -10,8 +11,8 @@ export async function createCompetitor(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  const user = await requireUser();
-  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return planError("pro");
   if (!ctx) return { error: "Finish onboarding first." };
 
   const name = String(formData.get("name") ?? "").trim();
@@ -35,8 +36,11 @@ export async function createCompetitor(
 }
 
 export async function deleteCompetitor(competitorId: string) {
-  await requireUser();
-  await prisma.competitor.delete({ where: { id: competitorId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.competitor.deleteMany({
+    where: { id: competitorId, workspaceId: ctx.workspace.id },
+  });
   revalidatePath("/competitors");
 }
 
@@ -45,7 +49,14 @@ export async function addCompetitorSnapshot(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  await requireUser();
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return planError("pro");
+  // Snapshots hang off a competitor, which is what carries the workspace.
+  const competitor = await prisma.competitor.findFirst({
+    where: { id: competitorId, workspaceId: ctx.workspace.id },
+    select: { id: true },
+  });
+  if (!competitor) return { error: "Competitor not found." };
 
   const followersRaw = String(formData.get("followersCount") ?? "").trim();
   const followersCount = Number(followersRaw);
@@ -69,8 +80,11 @@ export async function addCompetitorSnapshot(
 }
 
 export async function deleteCompetitorSnapshot(snapshotId: string, competitorId: string) {
-  await requireUser();
-  await prisma.competitorSnapshot.delete({ where: { id: snapshotId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.competitorSnapshot.deleteMany({
+    where: { id: snapshotId, competitor: { workspaceId: ctx.workspace.id } },
+  });
   revalidatePath(`/competitors/${competitorId}`);
   revalidatePath("/competitors");
 }
