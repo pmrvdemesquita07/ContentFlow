@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
-import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace, planError } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 
 function parseDate(value: FormDataEntryValue | null) {
@@ -21,8 +20,8 @@ export async function createCampaign(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  const user = await requireUser();
-  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return planError("pro");
   if (!ctx?.brand) return { error: "Finish onboarding before creating a campaign." };
 
   const name = String(formData.get("name") ?? "").trim();
@@ -49,13 +48,14 @@ export async function updateCampaign(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  await requireUser();
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return planError("pro");
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Campaign name is required." };
 
-  await prisma.campaign.update({
-    where: { id: campaignId },
+  await prisma.campaign.updateMany({
+    where: { id: campaignId, workspaceId: ctx.workspace.id },
     data: {
       name,
       description: String(formData.get("description") ?? "").trim() || null,
@@ -71,19 +71,34 @@ export async function updateCampaign(
 }
 
 export async function deleteCampaign(campaignId: string) {
-  await requireUser();
-  await prisma.campaign.delete({ where: { id: campaignId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.campaign.deleteMany({ where: { id: campaignId, workspaceId: ctx.workspace.id } });
   revalidatePath("/campaigns");
 }
 
 export async function assignContentToCampaign(contentId: string, campaignId: string) {
-  await requireUser();
-  await prisma.content.update({ where: { id: contentId }, data: { campaignId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  // Both sides have to be the caller's: their own post, their own campaign.
+  const campaign = await prisma.campaign.findFirst({
+    where: { id: campaignId, workspaceId: ctx.workspace.id },
+    select: { id: true },
+  });
+  if (!campaign) return;
+  await prisma.content.updateMany({
+    where: { id: contentId, workspaceId: ctx.workspace.id },
+    data: { campaignId },
+  });
   revalidatePath(`/campaigns/${campaignId}`);
 }
 
 export async function removeContentFromCampaign(contentId: string, campaignId: string) {
-  await requireUser();
-  await prisma.content.update({ where: { id: contentId }, data: { campaignId: null } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.content.updateMany({
+    where: { id: contentId, workspaceId: ctx.workspace.id },
+    data: { campaignId: null },
+  });
   revalidatePath(`/campaigns/${campaignId}`);
 }
