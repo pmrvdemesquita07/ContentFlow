@@ -21,7 +21,8 @@ export default async function AgencyPage() {
       <div>
         <h1 className="text-2xl font-semibold">Agency roster</h1>
         <p className="text-sm text-muted-foreground">
-          Every brand in {ctx.workspace.name}, at a glance. Interactions are the trailing 30 days.
+          Every brand in {ctx.workspace.name}, at a glance. Interactions cover content published
+          in the trailing 30 days.
         </p>
       </div>
 
@@ -56,8 +57,8 @@ export default async function AgencyPage() {
                     <p className="font-semibold">{brand.connectedAccounts}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Posts</p>
-                    <p className="font-semibold">{brand.postsCount}</p>
+                    <p className="text-xs text-muted-foreground">Published</p>
+                    <p className="font-semibold">{brand.publishedCount}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Campaigns</p>
