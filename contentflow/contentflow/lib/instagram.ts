@@ -5,9 +5,11 @@ const IG_GRAPH_URL = "https://graph.instagram.com";
 // Scopes for the standalone "Instagram API with Instagram Login" (no
 // Facebook Page required) - double check these against whatever your Meta
 // App dashboard actually offers, Meta renames/adds scopes over time.
+// Read-only by design: nothing in this app publishes to Instagram yet, so
+// asking for content_publish would request a permission we never exercise -
+// which Meta's app review flags and which breaks least-privilege.
 const SCOPES = [
   "instagram_business_basic",
-  "instagram_business_content_publish",
   "instagram_business_manage_messages",
   "instagram_business_manage_comments",
   "instagram_business_manage_insights",
