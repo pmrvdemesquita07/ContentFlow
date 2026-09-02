@@ -1,16 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
-import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace, planError } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 
 export async function createCreator(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  const user = await requireUser();
-  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return planError("pro");
   if (!ctx) return { error: "Finish onboarding first." };
 
   const name = String(formData.get("name") ?? "").trim();
@@ -37,19 +36,39 @@ export async function createCreator(
 }
 
 export async function deleteCreator(creatorId: string) {
-  await requireUser();
-  await prisma.creator.delete({ where: { id: creatorId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.creator.deleteMany({ where: { id: creatorId, workspaceId: ctx.workspace.id } });
   revalidatePath("/creators");
 }
 
 export async function addCreatorToCampaign(creatorId: string, campaignId: string) {
-  await requireUser();
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  // The join row carries no workspace, so both sides are checked first.
+  const [creator, campaign] = await Promise.all([
+    prisma.creator.findFirst({
+      where: { id: creatorId, workspaceId: ctx.workspace.id },
+      select: { id: true },
+    }),
+    prisma.campaign.findFirst({
+      where: { id: campaignId, workspaceId: ctx.workspace.id },
+      select: { id: true },
+    }),
+  ]);
+  if (!creator || !campaign) return;
   await prisma.campaignCreator.create({ data: { creatorId, campaignId } });
   revalidatePath(`/campaigns/${campaignId}`);
 }
 
 export async function removeCreatorFromCampaign(creatorId: string, campaignId: string) {
-  await requireUser();
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  const campaign = await prisma.campaign.findFirst({
+    where: { id: campaignId, workspaceId: ctx.workspace.id },
+    select: { id: true },
+  });
+  if (!campaign) return;
   await prisma.campaignCreator.delete({
     where: { campaignId_creatorId: { campaignId, creatorId } },
   });
