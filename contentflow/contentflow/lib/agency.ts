@@ -1,17 +1,14 @@
 import { prisma } from "@/lib/db";
+import { interactionsOf, latestSnapshotPerPlatform } from "@/lib/metrics";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_DAYS = 30;
 
-function interactionsOf(m: { likes: number; comments: number; shares: number; saved: number; replies: number }) {
-  return m.likes + m.comments + m.shares + m.saved + m.replies;
-}
-
 /**
  * One row per brand in this workspace, aggregating what an agency needs at a
- * glance: followers across connected accounts, posts and campaigns run, and
- * interactions over the trailing 30 days - real synced data only, same
- * source tables as Analytics/Dashboard.
+ * glance: followers across connected accounts, published content, campaigns
+ * run, and interactions on content published in the trailing 30 days - real
+ * synced data only, on the same counting rules as Analytics/Dashboard.
  */
 export async function getAgencyRoster(workspaceId: string) {
   const since = new Date(Date.now() - WINDOW_DAYS * DAY_MS);
@@ -21,25 +18,38 @@ export async function getAgencyRoster(workspaceId: string) {
     orderBy: { createdAt: "asc" },
     include: {
       socialAccounts: true,
-      _count: { select: { content: true, campaigns: true } },
+      // Counted on `status`, not every row: `content` also holds ideas and
+      // drafts, so a brand with a full ideas bank and nothing shipped would
+      // otherwise read as its most productive one.
+      _count: {
+        select: { content: { where: { status: "published" } }, campaigns: true },
+      },
     },
   });
 
-  // Pull the latest-per-content metric row within the window, per brand, the
-  // same "latest snapshot" rule used everywhere else metrics are summed.
-  const recentMetrics = await prisma.metric.findMany({
-    where: { content: { brandId: { in: brands.map((b) => b.id) } }, capturedAt: { gte: since } },
-    include: { content: { select: { brandId: true } } },
-    orderBy: { capturedAt: "desc" },
+  // Windowed by when the content was *published*, not when we happened to
+  // sync it: filtering on capturedAt made this "interactions on whatever got
+  // re-synced this month" - every post ever if a sync ran, zero if none did.
+  const recentContent = await prisma.content.findMany({
+    where: {
+      brandId: { in: brands.map((b) => b.id) },
+      publishedAt: { gte: since },
+    },
+    select: { brandId: true, metrics: true },
   });
-  const latestPerContent = new Map<string, (typeof recentMetrics)[number]>();
-  for (const m of recentMetrics) {
-    if (!latestPerContent.has(m.contentId)) latestPerContent.set(m.contentId, m);
-  }
+
   const interactionsByBrand = new Map<string, number>();
-  for (const m of latestPerContent.values()) {
-    const brandId = m.content.brandId;
-    interactionsByBrand.set(brandId, (interactionsByBrand.get(brandId) ?? 0) + interactionsOf(m));
+  for (const content of recentContent) {
+    // Latest snapshot per platform - metric rows are cumulative, one per sync,
+    // so summing the history multiplies by however many times we've synced.
+    const interactions = latestSnapshotPerPlatform(content.metrics).reduce(
+      (sum, m) => sum + interactionsOf(m),
+      0
+    );
+    interactionsByBrand.set(
+      content.brandId,
+      (interactionsByBrand.get(content.brandId) ?? 0) + interactions
+    );
   }
 
   return brands.map((b) => ({
@@ -47,7 +57,7 @@ export async function getAgencyRoster(workspaceId: string) {
     name: b.name,
     followers: b.socialAccounts.reduce((sum, a) => sum + (a.followersCount ?? 0), 0),
     connectedAccounts: b.socialAccounts.length,
-    postsCount: b._count.content,
+    publishedCount: b._count.content,
     campaignsCount: b._count.campaigns,
     interactions30d: interactionsByBrand.get(b.id) ?? 0,
   }));
