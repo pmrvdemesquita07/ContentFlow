@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 
 export async function createReport(campaignId: string) {
@@ -18,9 +19,10 @@ export async function createReport(campaignId: string) {
 }
 
 export async function revokeReport(reportId: string, campaignId: string) {
-  await requireUser();
-  await prisma.report.update({
-    where: { id: reportId },
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.report.updateMany({
+    where: { id: reportId, workspaceId: ctx.workspace.id },
     data: { revokedAt: new Date() },
   });
   revalidatePath(`/campaigns/${campaignId}`);
@@ -67,7 +69,10 @@ export async function createReportSubscription(
 }
 
 export async function deleteReportSubscription(subscriptionId: string, campaignId: string) {
-  await requireUser();
-  await prisma.reportSubscription.delete({ where: { id: subscriptionId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.reportSubscription.deleteMany({
+    where: { id: subscriptionId, workspaceId: ctx.workspace.id },
+  });
   revalidatePath(`/campaigns/${campaignId}`);
 }
