@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db";
+import { interactionsOf } from "@/lib/metrics";
 
-export function interactionsOf(m: { likes: number; comments: number; shares: number; saved: number; replies: number }) {
-  return m.likes + m.comments + m.shares + m.saved + m.replies;
-}
+// Re-exported so the report page keeps one import for its rollups; the
+// definition itself lives in lib/metrics.ts.
+export { interactionsOf };
 
 /// ROI here means real cost vs real synced interactions/reach - never a
 /// fabricated revenue figure, since ContentFlow has no sales/e-commerce
