@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { requireWorkspace } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -127,9 +128,17 @@ export async function uploadCampaignFile(
 }
 
 export async function deleteMedia(id: string) {
-  await requireUser();
+  const ctx = await requireWorkspace();
+  if (!ctx) return;
 
-  const media = await prisma.media.delete({ where: { id } });
+  // Read first (scoped), then delete: the row's fileUrl is needed to remove
+  // the object from storage afterwards.
+  const owned = await prisma.media.findFirst({
+    where: { id, workspaceId: ctx.workspace.id },
+    select: { id: true, fileUrl: true },
+  });
+  if (!owned) return;
+  const media = await prisma.media.delete({ where: { id: owned.id } });
 
   const path = storagePathFromPublicUrl(media.fileUrl);
   if (path) {
