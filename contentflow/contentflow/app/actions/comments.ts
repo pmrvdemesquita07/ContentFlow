@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireWorkspace } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { replyToInstagramComment } from "@/lib/instagram";
 
@@ -10,13 +10,17 @@ export async function replyToComment(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  await requireUser();
+  const ctx = await requireWorkspace();
+  if (!ctx) return { error: "No workspace selected." };
 
   const message = String(formData.get("message") ?? "").trim();
   if (!message) return { error: "Write a reply first." };
 
-  const comment = await prisma.comment.findUnique({
-    where: { id: commentId },
+  // Scoped by workspace: this reply is posted with the brand's own OAuth
+  // token, so fetching any comment by id would let one workspace publish
+  // through another's connected account.
+  const comment = await prisma.comment.findFirst({
+    where: { id: commentId, workspaceId: ctx.workspace.id },
     include: { brand: { include: { socialAccounts: true } } },
   });
   if (!comment) return { error: "Comment not found." };
@@ -32,8 +36,8 @@ export async function replyToComment(
     return { error: error instanceof Error ? error.message : "Reply failed." };
   }
 
-  await prisma.comment.update({
-    where: { id: commentId },
+  await prisma.comment.updateMany({
+    where: { id: commentId, workspaceId: ctx.workspace.id },
     data: { status: "replied", replyText: message, repliedAt: new Date() },
   });
 
@@ -42,9 +46,10 @@ export async function replyToComment(
 }
 
 export async function markCommentRead(commentId: string) {
-  await requireUser();
+  const ctx = await requireWorkspace();
+  if (!ctx) return;
   await prisma.comment.updateMany({
-    where: { id: commentId, status: "unread" },
+    where: { id: commentId, status: "unread", workspaceId: ctx.workspace.id },
     data: { status: "read" },
   });
   revalidatePath("/social-hub");
