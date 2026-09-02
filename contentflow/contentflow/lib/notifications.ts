@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { interactionsOf } from "@/lib/metrics";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DIGEST_AVERAGE_WINDOW_DAYS = 30;
@@ -11,10 +12,6 @@ function startOfDay(d: Date) {
 
 function dayKey(date: Date) {
   return date.toISOString().slice(0, 10);
-}
-
-function interactionsOf(m: { likes: number; comments: number; shares: number; saved: number; replies: number }) {
-  return m.likes + m.comments + m.shares + m.saved + m.replies;
 }
 
 /** New comments + new DMs, newest first - the real, identity-attached
@@ -61,36 +58,88 @@ export async function getNotificationFeed(brandId: string, workspaceId: string) 
   return feed;
 }
 
-/** Per-day totals for a brand's content: posts touched, likes, comments,
- * reach - built the same way the Dashboard/Analytics charts already
- * aggregate metrics (latest snapshot per content per day), so the digest
- * stays consistent with what's shown elsewhere rather than introducing a
- * different counting rule. */
-async function getDailyTotals(brandId: string, since: Date) {
+/**
+ * What each day actually *gained*, not what the account is worth in total.
+ *
+ * Metric rows are cumulative: each sync stores a post's lifetime totals so
+ * far. Reporting those directly meant the digest emailed the same "yesterday
+ * you got 24,720 likes" every single day - the account's whole history, sent
+ * out daily as if it had just happened. So each day's figure is the rise over
+ * the previous known snapshot for that same post and platform.
+ *
+ * A post first seen on the day it was published counts in full (those
+ * interactions really are new that day). A post that appears for the first
+ * time but was published earlier contributes nothing: we genuinely don't know
+ * which day those interactions came from, and guessing would be the same
+ * mistake in a smaller disguise.
+ */
+async function getDailyGains(brandId: string, since: Date) {
+  // Reaches one day further back than the window so the first reported day
+  // still has a baseline to subtract from.
+  const baselineStart = new Date(since.getTime() - DAY_MS);
   const metrics = await prisma.metric.findMany({
-    where: { content: { brandId }, capturedAt: { gte: since } },
+    where: { content: { brandId }, capturedAt: { gte: baselineStart } },
+    include: { content: { select: { publishedAt: true } } },
     orderBy: { capturedAt: "asc" },
   });
 
-  const latestPerContentDay = new Map<string, (typeof metrics)[number]>();
+  // Latest snapshot per post+platform per day, in chronological order.
+  const seriesByPost = new Map<string, { day: string; metric: (typeof metrics)[number] }[]>();
   for (const m of metrics) {
-    const key = `${m.contentId}:${dayKey(m.capturedAt)}`;
-    latestPerContentDay.set(key, m);
+    const postKey = `${m.contentId}:${m.platform}`;
+    const day = dayKey(m.capturedAt);
+    const series = seriesByPost.get(postKey) ?? [];
+    const last = series[series.length - 1];
+    if (last && last.day === day) last.metric = m;
+    else series.push({ day, metric: m });
+    seriesByPost.set(postKey, series);
   }
 
   const byDay = new Map<
     string,
     { posts: Set<string>; likes: number; comments: number; reach: number; interactions: number }
   >();
-  for (const [key, m] of latestPerContentDay) {
-    const day = key.split(":")[1];
-    const row = byDay.get(day) ?? { posts: new Set(), likes: 0, comments: 0, reach: 0, interactions: 0 };
-    row.posts.add(m.contentId);
-    row.likes += m.likes;
-    row.comments += m.comments;
-    row.reach += m.reach;
-    row.interactions += interactionsOf(m);
-    byDay.set(day, row);
+
+  for (const series of seriesByPost.values()) {
+    series.forEach((point, i) => {
+      const previous = i > 0 ? series[i - 1].metric : null;
+      const publishedAt = point.metric.content.publishedAt;
+
+      let likes: number;
+      let comments: number;
+      let reach: number;
+      let interactions: number;
+
+      if (previous) {
+        // Cumulative counts can dip (a deleted comment, a corrected figure) -
+        // clamp at zero rather than letting a negative day drag the average.
+        likes = Math.max(0, point.metric.likes - previous.likes);
+        comments = Math.max(0, point.metric.comments - previous.comments);
+        reach = Math.max(0, point.metric.reach - previous.reach);
+        interactions = Math.max(0, interactionsOf(point.metric) - interactionsOf(previous));
+      } else if (publishedAt && dayKey(publishedAt) === point.day) {
+        likes = point.metric.likes;
+        comments = point.metric.comments;
+        reach = point.metric.reach;
+        interactions = interactionsOf(point.metric);
+      } else {
+        return;
+      }
+
+      const row = byDay.get(point.day) ?? {
+        posts: new Set<string>(),
+        likes: 0,
+        comments: 0,
+        reach: 0,
+        interactions: 0,
+      };
+      if (publishedAt && dayKey(publishedAt) === point.day) row.posts.add(point.metric.contentId);
+      row.likes += likes;
+      row.comments += comments;
+      row.reach += reach;
+      row.interactions += interactions;
+      byDay.set(point.day, row);
+    });
   }
 
   return byDay;
@@ -122,9 +171,10 @@ async function getFollowerDeltasByDay(brandId: string, since: Date) {
 
 /**
  * "Yesterday" - the last fully-completed day - compared against this
- * brand's own trailing 30-day daily average for each metric. Real numbers
- * only: if there's no data for yesterday or no average to compare against,
- * that's shown plainly rather than papered over.
+ * brand's own trailing 30-day daily average for each metric. Every figure is
+ * what that day *gained*, never a running lifetime total. Real numbers only:
+ * if there's no data for yesterday or no average to compare against, that's
+ * shown plainly rather than papered over.
  */
 export async function getDailyDigest(brandId: string) {
   const todayStart = startOfDay(new Date());
@@ -132,7 +182,7 @@ export async function getDailyDigest(brandId: string) {
   const windowStart = new Date(todayStart.getTime() - DIGEST_AVERAGE_WINDOW_DAYS * DAY_MS);
 
   const [dailyTotals, followerDeltas, commentsYesterday] = await Promise.all([
-    getDailyTotals(brandId, windowStart),
+    getDailyGains(brandId, windowStart),
     getFollowerDeltasByDay(brandId, windowStart),
     prisma.comment.count({
       where: { brandId, publishedAt: { gte: yesterdayStart, lt: todayStart } },
