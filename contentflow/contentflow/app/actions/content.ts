@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
-import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import type { ContentStatus, ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
 
@@ -22,9 +21,9 @@ export async function createContent(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  const user = await requireUser();
-  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  const ctx = await requireWorkspace();
   if (!ctx?.brand) return { error: "Finish onboarding before creating content." };
+  const user = ctx.user;
 
   const title = String(formData.get("title") ?? "").trim();
   const status = String(formData.get("status") ?? "idea") as ContentStatus;
@@ -79,15 +78,25 @@ export async function createContent(
 }
 
 export async function updateContentStatus(id: string, status: ContentStatus) {
-  await requireUser();
-  await prisma.content.update({ where: { id }, data: { status } });
+  const ctx = await requireWorkspace();
+  if (!ctx) return;
+  // updateMany, not update: content owned by another workspace matches nothing
+  // instead of throwing an error the UI has no way to handle.
+  await prisma.content.updateMany({
+    where: { id, workspaceId: ctx.workspace.id },
+    data: { status },
+  });
   revalidateViews();
 }
 
 /** Calendar drag-and-drop: move a post to a different day/time, nothing else changes. */
 export async function moveContent(id: string, scheduledAt: Date) {
-  await requireUser();
-  await prisma.content.update({ where: { id }, data: { scheduledAt } });
+  const ctx = await requireWorkspace();
+  if (!ctx) return;
+  await prisma.content.updateMany({
+    where: { id, workspaceId: ctx.workspace.id },
+    data: { scheduledAt },
+  });
   revalidateViews();
 }
 
@@ -96,7 +105,8 @@ export async function updateContent(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  await requireUser();
+  const ctx = await requireWorkspace();
+  if (!ctx) return { error: "No workspace selected." };
 
   const title = String(formData.get("title") ?? "").trim();
   const status = String(formData.get("status") ?? "idea") as ContentStatus;
@@ -107,8 +117,8 @@ export async function updateContent(
 
   if (!title) return { error: "Title is required." };
 
-  await prisma.content.update({
-    where: { id },
+  await prisma.content.updateMany({
+    where: { id, workspaceId: ctx.workspace.id },
     data: {
       title,
       body,
@@ -124,7 +134,8 @@ export async function updateContent(
 }
 
 export async function deleteContent(id: string) {
-  await requireUser();
-  await prisma.content.delete({ where: { id } });
+  const ctx = await requireWorkspace();
+  if (!ctx) return;
+  await prisma.content.deleteMany({ where: { id, workspaceId: ctx.workspace.id } });
   revalidateViews();
 }
