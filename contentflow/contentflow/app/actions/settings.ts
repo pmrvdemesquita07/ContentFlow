@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireWorkspace } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 
 function splitLines(value: string) {
@@ -23,7 +23,8 @@ export async function updateBrandSettings(
   _prevState: { error?: string; saved?: boolean } | undefined,
   formData: FormData
 ) {
-  await requireUser();
+  const ctx = await requireWorkspace();
+  if (!ctx) return { error: "No workspace selected." };
 
   const brandName = String(formData.get("brandName") ?? "").trim();
   const tone = String(formData.get("tone") ?? "").trim();
@@ -31,6 +32,14 @@ export async function updateBrandSettings(
   const examplePosts = splitLines(String(formData.get("examplePosts") ?? ""));
 
   if (!brandName) return { error: "Brand name is required." };
+
+  // Renaming a brand and rewriting its voice both have to be limited to the
+  // caller's own workspace - the brandId arrives from the client.
+  const owned = await prisma.brand.findFirst({
+    where: { id: brandId, workspaceId: ctx.workspace.id },
+    select: { id: true },
+  });
+  if (!owned) return { error: "Brand not found." };
 
   await prisma.brand.update({ where: { id: brandId }, data: { name: brandName } });
 
