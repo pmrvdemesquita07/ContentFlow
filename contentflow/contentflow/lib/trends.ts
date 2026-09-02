@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/db";
+import { interactionsOf } from "@/lib/metrics";
 import type { ContentType, SocialPlatform } from "@/lib/generated/prisma/enums";
-
-function interactionsOf(m: { likes: number; comments: number; shares: number; saved: number; replies: number }) {
-  return m.likes + m.comments + m.shares + m.saved + m.replies;
-}
 
 function rankByAvg<K>(map: Map<K, { total: number; count: number }>) {
   return [...map.entries()]
