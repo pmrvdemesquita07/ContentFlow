@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
-import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { isUrl, fetchLinkPreview } from "@/lib/og-preview";
 
@@ -25,8 +24,7 @@ export async function captureIdea(
   _prevState: CaptureIdeaResult | undefined,
   formData: FormData
 ): Promise<CaptureIdeaResult> {
-  const user = await requireUser();
-  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  const ctx = await requireWorkspace();
   if (!ctx?.brand) return { error: "Finish onboarding first." };
 
   const text = String(formData.get("text") ?? "").trim();
@@ -46,7 +44,7 @@ export async function captureIdea(
     data: {
       workspaceId: ctx.workspace.id,
       brandId: ctx.brand.id,
-      createdBy: user.id,
+      createdBy: ctx.user.id,
       title: title.slice(0, 200),
       type: "post",
       status: "idea",
@@ -71,7 +69,11 @@ export async function captureIdea(
 }
 
 export async function toggleIdeaApproved(id: string, approved: boolean) {
-  await requireUser();
-  await prisma.content.update({ where: { id }, data: { approved } });
+  const ctx = await requireWorkspace();
+  if (!ctx) return;
+  await prisma.content.updateMany({
+    where: { id, workspaceId: ctx.workspace.id },
+    data: { approved },
+  });
   revalidatePath("/ideas");
 }
