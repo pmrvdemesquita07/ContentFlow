@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
-import { getCurrentWorkspaceAndBrand } from "@/lib/workspace";
+import { requireWorkspace, planError } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import type { ContractStatus, PaymentStatus } from "@/lib/generated/prisma/enums";
 
@@ -15,8 +14,8 @@ export async function createContract(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  const user = await requireUser();
-  const ctx = await getCurrentWorkspaceAndBrand(user.id);
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return planError("pro");
   if (!ctx) return { error: "Finish onboarding first." };
 
   const creatorId = String(formData.get("creatorId") ?? "").trim();
@@ -51,15 +50,20 @@ export async function createContract(
 }
 
 export async function updateContractStatus(contractId: string, status: ContractStatus) {
-  await requireUser();
-  await prisma.contract.update({ where: { id: contractId }, data: { status } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.contract.updateMany({
+    where: { id: contractId, workspaceId: ctx.workspace.id },
+    data: { status },
+  });
   revalidatePath("/contracts");
   revalidatePath(`/contracts/${contractId}`);
 }
 
 export async function deleteContract(contractId: string) {
-  await requireUser();
-  await prisma.contract.delete({ where: { id: contractId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.contract.deleteMany({ where: { id: contractId, workspaceId: ctx.workspace.id } });
   revalidatePath("/contracts");
 }
 
@@ -68,7 +72,15 @@ export async function addPayment(
   _prevState: { error?: string } | undefined,
   formData: FormData
 ) {
-  await requireUser();
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return planError("pro");
+  // Payments hang off a contract and carry no workspace of their own, so the
+  // parent contract is what proves ownership here.
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, workspaceId: ctx.workspace.id },
+    select: { id: true },
+  });
+  if (!contract) return { error: "Contract not found." };
 
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const amount = Number(amountRaw);
@@ -94,16 +106,20 @@ export async function updatePaymentStatus(
   contractId: string,
   status: PaymentStatus
 ) {
-  await requireUser();
-  await prisma.payment.update({
-    where: { id: paymentId },
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.payment.updateMany({
+    where: { id: paymentId, contract: { workspaceId: ctx.workspace.id } },
     data: { status, paidAt: status === "paid" ? new Date() : null },
   });
   revalidatePath(`/contracts/${contractId}`);
 }
 
 export async function deletePayment(paymentId: string, contractId: string) {
-  await requireUser();
-  await prisma.payment.delete({ where: { id: paymentId } });
+  const ctx = await requireWorkspace("pro");
+  if (!ctx) return;
+  await prisma.payment.deleteMany({
+    where: { id: paymentId, contract: { workspaceId: ctx.workspace.id } },
+  });
   revalidatePath(`/contracts/${contractId}`);
 }
