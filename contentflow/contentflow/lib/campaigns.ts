@@ -6,7 +6,7 @@ import { interactionsOf } from "@/lib/metrics";
 export { interactionsOf };
 
 /// ROI here means real cost vs real synced interactions/reach - never a
-/// fabricated revenue figure, since ContentFlow has no sales/e-commerce
+/// fabricated revenue figure, since SocialFlow has no sales/e-commerce
 /// integration to know what a post actually generated in revenue.
 export function roiOf(budget: number | null, interactions: number, reach: number) {
   if (budget === null) return null;

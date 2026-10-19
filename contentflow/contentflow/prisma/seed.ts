@@ -10,7 +10,7 @@ async function main() {
   await prisma.user.upsert({
     where: { id: DEMO_USER_ID },
     update: {},
-    create: { id: DEMO_USER_ID, email: "demo@contentflow.test", name: "Demo User" },
+    create: { id: DEMO_USER_ID, email: "demo@socialflow.test", name: "Demo User" },
   });
 
   const workspace = await prisma.workspace.upsert({

@@ -49,20 +49,36 @@ library - Prisma (Postgres) - Supabase (Auth + Storage).
 
 ## Project layout
 
-- `app/(app)/` - the authenticated app shell (Ideas Bank, Posts, Calendar, Tasks, Media,
-  Settings), gated by `app/(app)/layout.tsx`
+- `app/(app)/` - the authenticated app shell (every module below), gated by
+  `app/(app)/layout.tsx`
 - `app/login`, `app/signup`, `app/onboarding` - Supabase Auth + first Workspace/Brand setup
 - `app/actions/` - server actions (mutations)
 - `lib/` - Prisma client, Supabase client helpers, and query helpers
-- `prisma/schema.prisma` - the full data model (some tables - Metric, SocialAccount,
-  Message, AssistantLog - are defined for later phases but have no UI yet)
+- `prisma/schema.prisma` - the full data model
 - `proxy.ts` - session-refresh gate for the authenticated routes (Next.js 16 renamed
   Middleware to Proxy)
 
-## What's built vs. what's next
+## What's built
 
-Built: auth + onboarding, Content core (Ideas Bank / Posts / Calendar), Tasks, Media,
-Settings + Brand Voice.
+| Area | Modules |
+|---|---|
+| Content | Ideas Bank, Posts, Calendar, Tasks, Media, Brand Voice |
+| Performance | Dashboard, Analytics, Social Hub (Instagram + TikTok OAuth, daily sync), Trends |
+| Monetisation | Opportunities marketplace + threads, Media Kit, Contracts & payments |
+| Campaigns | Campaigns + ROI, Creators, Competitors, shareable Reports (scheduled email) |
+| Agency | Agency roster, Brands, Discover creators, Mailbox |
+| AI | Assistants (brand-context aware, monthly usage limits per plan) |
 
-Not yet built (tables already exist in the schema for when you get there): Dashboard,
-Social Hub (real OAuth), Analytics, the six AI Assistants, Mailbox.
+Billing runs through Stripe (`STRIPE_PRICE_PRO`, `STRIPE_PRICE_STUDIO`).
+
+## Plans
+
+| Plan | Price | Unlocks |
+|---|---|---|
+| Starter | 0€/month | 1 workspace, Dashboard, Ideas/Posts/Calendar, Media, Reports, 20 AI requests/month |
+| Pro | 29€/month | Multiple workspaces, Campaigns + ROI, Contracts, Opportunities, Mailbox, Competitors, Trends, Tasks, 100 AI requests/month |
+| Studio | 79€/month | Everything in Pro, Agency roster, all-brands Calendar, Discover, reply/briefing AI Assistants, niche Trends, 500 AI requests/month |
+
+Gating lives in `lib/plan.ts` (`planAtLeast`) and `lib/nav-links.ts`; the public copy in
+`components/marketing/landing-page.tsx` must stay in sync with it, and the Stripe prices
+behind `STRIPE_PRICE_PRO` / `STRIPE_PRICE_STUDIO` must be set to 29€ and 79€.
