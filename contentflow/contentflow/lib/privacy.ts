@@ -65,7 +65,7 @@ export async function buildDataExport(userId: string) {
 
   return {
     exportedAt: new Date().toISOString(),
-    format: "ContentFlow data export v1",
+    format: "SocialFlow data export v1",
     notes:
       "Covers the account and every workspace it belongs to. OAuth tokens are deliberately excluded: they are credentials, not personal data.",
     account: user,

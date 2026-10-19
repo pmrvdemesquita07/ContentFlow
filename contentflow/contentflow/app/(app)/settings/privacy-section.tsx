@@ -26,7 +26,7 @@ export function PrivacySection({ email }: { email: string }) {
       const url = URL.createObjectURL(new Blob([result.json], { type: "application/json" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `contentflow-data-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `socialflow-data-${new Date().toISOString().slice(0, 10)}.json`;
       link.click();
       URL.revokeObjectURL(url);
     });

@@ -7,6 +7,8 @@ import {
   Briefcase,
   Share2,
   Check,
+  Sparkles,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -62,9 +64,11 @@ const PLANS = [
     tagline: "Para começar a testar, sem cartão de crédito.",
     features: [
       "1 workspace",
-      "1 conta social ligada (Instagram ou TikTok)",
-      "Dashboard, calendário e ideias",
+      "Instagram e TikTok ligados",
+      "Dashboard, ideias, posts e calendário",
+      "Media e Brand Voice",
       "Relatórios partilháveis",
+      "20 legendas com IA por mês",
     ],
     cta: "Começar grátis",
     highlighted: false,
@@ -76,11 +80,13 @@ const PLANS = [
     period: "/mês",
     tagline: "Para marcas e criadores a sério.",
     features: [
-      "Contas sociais ilimitadas",
+      "Tudo do Starter, com vários workspaces",
       "Campanhas + ROI",
       "Contratos & pagamentos",
-      "Concorrentes",
-      "Marketplace de oportunidades",
+      "Marketplace de oportunidades e Mailbox",
+      "Concorrentes e Trends",
+      "Tarefas da equipa",
+      "100 legendas com IA por mês",
     ],
     cta: "Experimentar Pro",
     highlighted: true,
@@ -93,13 +99,46 @@ const PLANS = [
     tagline: "Para agências com várias marcas e clientes.",
     features: [
       "Tudo do Pro",
-      "Workspaces ilimitados",
-      "Vista de roster de marcas",
-      "Discover: marketplace de criadores",
+      "Vista de roster de todas as marcas",
+      "Calendário de todos os clientes",
+      "Discover: pesquisa de criadores",
+      "Assistentes de IA para respostas e briefings",
+      "Trends por nicho",
+      "500 pedidos de IA por mês",
       "Suporte prioritário",
     ],
     cta: "Falar sobre Studio",
     highlighted: false,
+  },
+];
+
+// Os dois públicos têm dores diferentes - cada cartão fala só com um deles.
+const AUDIENCES = [
+  {
+    icon: Sparkles,
+    badge: "Criadores",
+    title: "Publica com consistência e começa a faturar",
+    pain: "Ideias perdidas nas notas do telemóvel, propostas de marcas perdidas nas DMs.",
+    points: [
+      "Ideias, posts e calendário no mesmo sítio — uma ideia vira post sem copiar nada",
+      "Media kit gerado a partir das tuas métricas reais",
+      "Marketplace de oportunidades: candidata-te a campanhas de marcas",
+      "Contratos e pagamentos registados, para saberes sempre quem te deve",
+    ],
+    plan: "Começa no Starter, grátis",
+  },
+  {
+    icon: Building2,
+    badge: "Agências & marcas",
+    title: "Gere todos os clientes sem folhas de cálculo",
+    pain: "Dez clientes, dez Excels, relatórios montados à mão todos os meses.",
+    points: [
+      "Vista de roster com todas as marcas e o calendário de todos os clientes",
+      "Campanhas com ROI real: custo por interação e por alcance face ao orçamento",
+      "Relatórios só-leitura para enviar ao cliente, com envio automático por email",
+      "Discover para encontrar criadores e contratos para os fechar",
+    ],
+    plan: "Feito para o Studio",
   },
 ];
 
@@ -110,6 +149,9 @@ export function LandingPage() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Logo size="sm" />
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
+            <a href="#para-quem" className="hover:text-foreground">
+              Para quem
+            </a>
             <a href="#produto" className="hover:text-foreground">
               Produto
             </a>
@@ -170,6 +212,44 @@ export function LandingPage() {
                 playsInline
                 preload="metadata"
               />
+            </div>
+          </div>
+        </section>
+
+        {/* Para quem é */}
+        <section id="para-quem" className="border-t py-20">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight">Uma app, dois trabalhos diferentes</h2>
+              <p className="mt-3 text-muted-foreground">
+                Quem cria conteúdo e quem gere criadores precisam de coisas diferentes. O SocialFlow
+                mostra a cada um só o que interessa.
+              </p>
+            </div>
+            <div className="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-2">
+              {AUDIENCES.map((a) => (
+                <Card key={a.badge}>
+                  <CardHeader>
+                    <div className="mb-2 flex items-center gap-2">
+                      <a.icon className="size-5 text-primary" />
+                      <Badge variant="outline">{a.badge}</Badge>
+                    </div>
+                    <CardTitle className="text-xl">{a.title}</CardTitle>
+                    <CardDescription>{a.pain}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col gap-4">
+                    <ul className="flex flex-col gap-2.5 text-sm">
+                      {a.points.map((point) => (
+                        <li key={point} className="flex items-start gap-2">
+                          <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-auto text-sm font-medium text-primary">{a.plan}</p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         </section>

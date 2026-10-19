@@ -1,4 +1,4 @@
-// ContentFlow data model.
+// SocialFlow data model.
 // Content is the central entity: Ideas Bank, Posts, and Calendar are all
 // views over this same table, filtered by `status` / `scheduledAt`.
 
@@ -270,7 +270,7 @@ model Campaign {
 }
 
 /// A contact record for an influencer/content creator working on campaigns -
-/// not a ContentFlow login, just the roster info an agency or brand needs
+/// not a SocialFlow login, just the roster info an agency or brand needs
 /// (name, how to reach them, their own social handles).
 model Creator {
   id              String   @id @default(uuid())
@@ -595,7 +595,7 @@ model Content {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   /// Set when this row was imported from a connected social account
-  /// (the platform's post/media id) instead of authored in ContentFlow.
+  /// (the platform's post/media id) instead of authored in SocialFlow.
   externalId   String?
   externalUrl  String?
   /// Refreshed on every sync - the platform's CDN link expires after a
