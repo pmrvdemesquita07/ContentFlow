@@ -7,8 +7,8 @@ function nlfp_default_settings() {
 		'post_types'            => array( 'page', 'post' ),
 		'exclude_ids'           => '',
 		'full_width'            => 1,
-		'title'                 => 'Mantenha-se atualizado',
-		'description'           => 'Receba as últimas notícias diretamente no seu e-mail.',
+		'title'                 => 'Subscreva a Newsletter',
+		'description'           => 'Fique a par das nossas novidades',
 		'button'                => 'Subscrever',
 		// {privacidade} é substituído pelo URL da página de privacidade definida em Definições > Privacidade.
 		'consent'               => 'Li e aceito a <a href="{privacidade}">política de privacidade</a>',
