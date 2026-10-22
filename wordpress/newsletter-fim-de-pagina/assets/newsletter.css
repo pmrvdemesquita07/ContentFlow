@@ -1,0 +1,240 @@
+/* Newsletter no Fim da Página */
+
+.nlfp {
+	--nlfp-bg: #e1e8ef;
+	--nlfp-text: #2b4558;
+	--nlfp-watermark: #b5bdc6;
+	--nlfp-muted: #4f6577;
+	--nlfp-error: #c0392b;
+
+	position: relative;
+	overflow: hidden;
+	isolation: isolate;
+	clear: both;
+	margin: 4rem 0 0;
+	padding: clamp(3rem, 6vw, 5.5rem) 1.5rem;
+	background: var(--nlfp-bg);
+	color: var(--nlfp-text);
+	font: inherit;
+	box-sizing: border-box;
+}
+
+.nlfp *,
+.nlfp *::before,
+.nlfp *::after {
+	box-sizing: inherit;
+}
+
+/* Faixa a toda a largura do ecrã, mesmo dentro da coluna de conteúdo do tema. */
+.nlfp--full {
+	width: 100vw;
+	max-width: 100vw;
+	margin-left: calc(50% - 50vw);
+	margin-right: calc(50% - 50vw);
+	margin-bottom: 0;
+}
+
+/* Evita scroll horizontal causado pelo 100vw (largura da barra de scroll). */
+body.nlfp-has-band {
+	overflow-x: clip;
+}
+
+/* Logo em marca de água: o logo é usado como máscara e pintado numa cor única,
+   por isso funciona com qualquer logo (PNG transparente ou SVG). */
+.nlfp__watermark {
+	position: absolute;
+	z-index: -1;
+	top: 30%;
+	right: 0;
+	width: min(32%, 620px);
+	height: 120%;
+	background-color: var(--nlfp-watermark);
+	-webkit-mask: var(--nlfp-logo) no-repeat right top / contain;
+	mask: var(--nlfp-logo) no-repeat right top / contain;
+	pointer-events: none;
+}
+
+.nlfp__inner {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+	gap: clamp(2rem, 8vw, 12rem);
+	max-width: 1000px;
+	margin: 0 auto;
+}
+
+.nlfp__title {
+	margin: 0 0 1.75rem;
+	color: var(--nlfp-text);
+	font-size: clamp(1.5rem, 2.2vw, 1.85rem);
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.nlfp__desc {
+	margin: 0;
+	max-width: 22rem;
+	color: var(--nlfp-muted);
+	font-size: 1.05rem;
+	line-height: 1.55;
+}
+
+.nlfp__form {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 1.4rem;
+	margin: 0;
+}
+
+.nlfp__row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+}
+
+.nlfp__field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	width: 8.5rem;
+}
+
+.nlfp__field--email {
+	width: 100%;
+}
+
+.nlfp__field label {
+	color: var(--nlfp-text);
+	font-size: 0.85rem;
+	line-height: 1.2;
+}
+
+.nlfp__req {
+	color: var(--nlfp-error);
+}
+
+.nlfp .nlfp__field input {
+	width: 100%;
+	margin: 0;
+	padding: 0.6rem 0.75rem;
+	border: 0;
+	border-bottom: 2px solid var(--nlfp-text);
+	border-radius: 2px 2px 0 0;
+	background: #fff;
+	color: var(--nlfp-text);
+	font: inherit;
+	font-size: 0.95rem;
+	box-shadow: none;
+}
+
+.nlfp .nlfp__field input::placeholder {
+	color: #8a9aa8;
+	opacity: 1;
+}
+
+.nlfp .nlfp__field input:focus {
+	outline: 2px solid var(--nlfp-text);
+	outline-offset: 2px;
+}
+
+.nlfp__consent {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	color: var(--nlfp-muted);
+	font-size: 0.75rem;
+	cursor: pointer;
+}
+
+.nlfp__consent input {
+	flex: none;
+	width: 1rem;
+	height: 1rem;
+	margin: 0;
+	accent-color: var(--nlfp-text);
+}
+
+.nlfp__consent a {
+	color: var(--nlfp-text);
+	text-decoration: underline;
+}
+
+.nlfp .nlfp__btn {
+	padding: 0.75rem 1.1rem;
+	border: 0;
+	border-radius: 4px;
+	background: #c8d3dd;
+	color: var(--nlfp-muted);
+	font: inherit;
+	font-size: 0.95rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s, color 0.2s;
+}
+
+/* O botão "acende" quando todos os campos obrigatórios estão preenchidos. */
+.nlfp__form:valid .nlfp__btn,
+.nlfp .nlfp__btn:hover,
+.nlfp .nlfp__btn:focus-visible {
+	background: var(--nlfp-text);
+	color: #fff;
+}
+
+.nlfp__form.is-loading .nlfp__btn {
+	opacity: 0.6;
+	cursor: progress;
+}
+
+.nlfp__msg {
+	margin: 0;
+	font-size: 0.9rem;
+}
+
+.nlfp__msg:empty {
+	display: none;
+}
+
+.nlfp__msg.is-success {
+	color: #1e7b4a;
+}
+
+.nlfp__msg.is-error {
+	color: var(--nlfp-error);
+}
+
+.nlfp__hp {
+	position: absolute !important;
+	left: -9999px !important;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+/* Tablet e telemóvel: uma coluna, marca de água mais discreta. */
+@media (max-width: 782px) {
+	.nlfp__inner {
+		grid-template-columns: 1fr;
+		gap: 2rem;
+	}
+
+	.nlfp__title {
+		margin-bottom: 1rem;
+	}
+
+	.nlfp__row {
+		width: 100%;
+	}
+
+	.nlfp__row .nlfp__field {
+		flex: 1 1 8rem;
+		width: auto;
+	}
+
+	.nlfp__watermark {
+		top: auto;
+		bottom: -15%;
+		width: 75%;
+		height: 40%;
+		opacity: 0.45;
+	}
+}
