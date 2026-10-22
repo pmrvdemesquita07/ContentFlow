@@ -224,7 +224,7 @@ function nlfp_subscribers_page() {
 			<?php endif; ?>
 			<?php foreach ( $rows as $row ) : ?>
 				<tr>
-					<td><?php echo esc_html( trim( $row->first_name . ' ' . $row->last_name ) ); ?></td>
+					<td><?php echo esc_html( $row->first_name ); ?></td>
 					<td><?php echo esc_html( $row->email ); ?></td>
 					<td><?php echo $row->source_url ? '<a href="' . esc_url( $row->source_url ) . '" target="_blank" rel="noopener">' . esc_html( wp_parse_url( $row->source_url, PHP_URL_PATH ) ?: '/' ) . '</a>' : '—'; ?></td>
 					<td><?php echo 'erro' === $row->sync_status ? '<span style="color:#b32d2e">Erro (ver logs)</span>' : esc_html( ucfirst( $row->sync_status ) ); ?></td>
@@ -252,7 +252,7 @@ function nlfp_export_csv() {
 		wp_die( 'Sem permissão.' );
 	}
 	global $wpdb;
-	$rows = $wpdb->get_results( 'SELECT first_name, last_name, email, source_url, sync_status, created_at FROM ' . nlfp_table() . ' ORDER BY created_at DESC', ARRAY_A );
+	$rows = $wpdb->get_results( 'SELECT first_name, email, source_url, sync_status, created_at FROM ' . nlfp_table() . ' ORDER BY created_at DESC', ARRAY_A );
 
 	nocache_headers();
 	header( 'Content-Type: text/csv; charset=utf-8' );
@@ -260,7 +260,7 @@ function nlfp_export_csv() {
 
 	$out = fopen( 'php://output', 'w' );
 	fwrite( $out, "\xEF\xBB\xBF" ); // BOM para o Excel abrir os acentos corretamente.
-	fputcsv( $out, array( 'Primeiro Nome', 'Apelido', 'Email', 'Página de origem', 'Sincronização', 'Data' ), ';' );
+	fputcsv( $out, array( 'Nome', 'Email', 'Página de origem', 'Sincronização', 'Data' ), ';' );
 	foreach ( $rows as $row ) {
 		// Evita injeção de fórmulas ao abrir no Excel.
 		$row = array_map(

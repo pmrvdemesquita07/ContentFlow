@@ -16,7 +16,7 @@ function nlfp_messages() {
 	return array(
 		'ok'      => $s['success'],
 		'exists'  => 'Este e-mail já está subscrito. Obrigado!',
-		'invalid' => 'Preencha o nome, o apelido e um e-mail válido.',
+		'invalid' => 'Preencha o nome e um e-mail válido.',
 		'consent' => 'Tem de aceitar a política de privacidade.',
 		'rate'    => 'Demasiadas tentativas. Tente novamente daqui a uns minutos.',
 		'error'   => 'Ocorreu um erro. Tente novamente.',
@@ -121,18 +121,12 @@ function nlfp_render_form() {
 					<label>Website <input type="text" name="nlfp_website" tabindex="-1" autocomplete="off"></label>
 				</div>
 
-				<div class="nlfp__row">
-					<div class="nlfp__field">
-						<label for="<?php echo esc_attr( $uid ); ?>-first">Primeiro Nome <span class="nlfp__req">*</span></label>
-						<input id="<?php echo esc_attr( $uid ); ?>-first" type="text" name="nlfp_first_name" placeholder="Nome" autocomplete="given-name" maxlength="100" required>
-					</div>
-					<div class="nlfp__field">
-						<label for="<?php echo esc_attr( $uid ); ?>-last">Apelido <span class="nlfp__req">*</span></label>
-						<input id="<?php echo esc_attr( $uid ); ?>-last" type="text" name="nlfp_last_name" placeholder="Apelido" autocomplete="family-name" maxlength="100" required>
-					</div>
+				<div class="nlfp__field">
+					<label for="<?php echo esc_attr( $uid ); ?>-name">Nome <span class="nlfp__req">*</span></label>
+					<input id="<?php echo esc_attr( $uid ); ?>-name" type="text" name="nlfp_first_name" placeholder="Nome" autocomplete="name" maxlength="100" required>
 				</div>
 
-				<div class="nlfp__field nlfp__field--email">
+				<div class="nlfp__field">
 					<label for="<?php echo esc_attr( $uid ); ?>-email">Endereço de e-mail <span class="nlfp__req">*</span></label>
 					<input id="<?php echo esc_attr( $uid ); ?>-email" type="email" name="nlfp_email" placeholder="nome@exemplo.com" autocomplete="email" maxlength="190" required>
 				</div>
@@ -165,9 +159,8 @@ function nlfp_process_subscription( array $data ) {
 
 	$email      = sanitize_email( $data['nlfp_email'] ?? '' );
 	$first_name = sanitize_text_field( $data['nlfp_first_name'] ?? '' );
-	$last_name  = sanitize_text_field( $data['nlfp_last_name'] ?? '' );
 
-	if ( ! is_email( $email ) || '' === $first_name || '' === $last_name ) {
+	if ( ! is_email( $email ) || '' === $first_name ) {
 		return 'invalid';
 	}
 	if ( empty( $data['nlfp_consent'] ) ) {
@@ -184,7 +177,7 @@ function nlfp_process_subscription( array $data ) {
 	set_transient( $rate_key, $attempts + 1, 10 * MINUTE_IN_SECONDS );
 
 	$source = esc_url_raw( $data['nlfp_source'] ?? '' );
-	$id     = nlfp_add_subscriber( strtolower( $email ), $first_name, $last_name, $source );
+	$id     = nlfp_add_subscriber( strtolower( $email ), $first_name, $source );
 
 	if ( 'exists' === $id ) {
 		return 'exists';
@@ -193,7 +186,7 @@ function nlfp_process_subscription( array $data ) {
 		return 'error';
 	}
 
-	$synced = nlfp_sync_to_provider( $email, $first_name, $last_name, nlfp_settings() );
+	$synced = nlfp_sync_to_provider( $email, $first_name, nlfp_settings() );
 	if ( is_wp_error( $synced ) ) {
 		// O subscritor fica guardado no WordPress; o erro aparece na lista de subscritores.
 		error_log( '[Newsletter no Fim da Página] ' . $synced->get_error_message() );

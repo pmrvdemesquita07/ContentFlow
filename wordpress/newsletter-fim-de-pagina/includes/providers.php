@@ -6,18 +6,18 @@ defined( 'ABSPATH' ) || exit;
  *
  * @return true|WP_Error
  */
-function nlfp_sync_to_provider( $email, $first_name, $last_name, $settings ) {
+function nlfp_sync_to_provider( $email, $first_name, $settings ) {
 	switch ( $settings['provider'] ) {
 		case 'brevo':
-			return nlfp_sync_brevo( $email, $first_name, $last_name, $settings );
+			return nlfp_sync_brevo( $email, $first_name, $settings );
 		case 'mailchimp':
-			return nlfp_sync_mailchimp( $email, $first_name, $last_name, $settings );
+			return nlfp_sync_mailchimp( $email, $first_name, $settings );
 		default:
 			return true;
 	}
 }
 
-function nlfp_sync_brevo( $email, $first_name, $last_name, $settings ) {
+function nlfp_sync_brevo( $email, $first_name, $settings ) {
 	if ( ! $settings['brevo_api_key'] || ! $settings['brevo_list_id'] ) {
 		return new WP_Error( 'nlfp_config', 'Brevo: falta a API key ou o ID da lista.' );
 	}
@@ -34,7 +34,7 @@ function nlfp_sync_brevo( $email, $first_name, $last_name, $settings ) {
 			'body'    => wp_json_encode(
 				array(
 					'email'         => $email,
-					'attributes'    => array( 'FIRSTNAME' => $first_name, 'LASTNAME' => $last_name ),
+					'attributes'    => array( 'FIRSTNAME' => $first_name ),
 					'listIds'       => array( (int) $settings['brevo_list_id'] ),
 					'updateEnabled' => true,
 				)
@@ -45,7 +45,7 @@ function nlfp_sync_brevo( $email, $first_name, $last_name, $settings ) {
 	return nlfp_check_response( $response, 'Brevo' );
 }
 
-function nlfp_sync_mailchimp( $email, $first_name, $last_name, $settings ) {
+function nlfp_sync_mailchimp( $email, $first_name, $settings ) {
 	$key  = $settings['mailchimp_api_key'];
 	$list = $settings['mailchimp_audience_id'];
 	if ( ! $key || ! $list || false === strpos( $key, '-' ) ) {
@@ -69,7 +69,7 @@ function nlfp_sync_mailchimp( $email, $first_name, $last_name, $settings ) {
 				array(
 					'email_address' => $email,
 					'status_if_new' => $settings['mailchimp_double_optin'] ? 'pending' : 'subscribed',
-					'merge_fields'  => array( 'FNAME' => $first_name, 'LNAME' => $last_name ),
+					'merge_fields'  => array( 'FNAME' => $first_name ),
 				)
 			),
 		)

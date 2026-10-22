@@ -91,20 +91,10 @@ body.nlfp-has-band {
 	margin: 0;
 }
 
-.nlfp__row {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 1rem;
-}
-
 .nlfp__field {
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
-	width: 8.5rem;
-}
-
-.nlfp__field--email {
 	width: 100%;
 }
 
@@ -224,15 +214,6 @@ body.nlfp-has-band {
 
 	.nlfp__title {
 		margin-bottom: 1rem;
-	}
-
-	.nlfp__row {
-		width: 100%;
-	}
-
-	.nlfp__row .nlfp__field {
-		flex: 1 1 8rem;
-		width: auto;
 	}
 
 	.nlfp__watermark {
