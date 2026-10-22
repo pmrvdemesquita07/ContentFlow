@@ -48,7 +48,7 @@ function nlfp_admin_assets( $hook ) {
 			$('#nlfp-logo-remove').on('click', function(e){
 				e.preventDefault();
 				$('#nlfp-logo-id').val('');
-				$('#nlfp-logo-preview').hide();
+				$('#nlfp-logo-preview').attr('src', $('#nlfp-logo-preview').data('default'));
 				$(this).hide();
 			});
 			$('#nlfp-provider').on('change', function(){
@@ -65,6 +65,7 @@ function nlfp_settings_page() {
 	$s    = nlfp_settings();
 	$name = 'nlfp_settings';
 	$logo = $s['logo_id'] ? wp_get_attachment_image_url( $s['logo_id'], 'medium' ) : '';
+	$default_logo = NLFP_URL . 'assets/logo.png';
 	?>
 	<div class="wrap">
 		<h1>Definições da newsletter</h1>
@@ -103,10 +104,10 @@ function nlfp_settings_page() {
 					<th scope="row">Logo (marca de água)</th>
 					<td>
 						<input type="hidden" id="nlfp-logo-id" name="<?php echo $name; ?>[logo_id]" value="<?php echo esc_attr( $s['logo_id'] ); ?>">
-						<img id="nlfp-logo-preview" src="<?php echo esc_url( $logo ); ?>" alt="" style="max-width:200px;max-height:120px;display:<?php echo $logo ? 'block' : 'none'; ?>;margin-bottom:.5rem;background:#e1e8ef;padding:8px">
+						<img id="nlfp-logo-preview" src="<?php echo esc_url( $logo ?: $default_logo ); ?>" data-default="<?php echo esc_url( $default_logo ); ?>" alt="" style="display:block;max-width:200px;max-height:120px;margin-bottom:.5rem;background:#000;padding:8px">
 						<button type="button" class="button" id="nlfp-logo-select">Escolher logo</button>
-						<button type="button" class="button-link-delete" id="nlfp-logo-remove" style="margin-left:.5rem;display:<?php echo $logo ? 'inline' : 'none'; ?>">Remover</button>
-						<p class="description">Usa um <strong>PNG com fundo transparente</strong> ou um <strong>SVG</strong>. O logo é pintado numa só cor (a "cor da marca de água" abaixo), por isso as cores originais não importam.</p>
+						<button type="button" class="button-link-delete" id="nlfp-logo-remove" style="margin-left:.5rem;display:<?php echo $logo ? 'inline' : 'none'; ?>">Repor logo predefinido</button>
+						<p class="description">Usa um <strong>PNG com fundo transparente</strong> ou um <strong>SVG</strong>. O logo é pintado numa só cor (a "cor da marca de água" abaixo), por isso as cores originais não importam. Sem escolha, é usado o logo incluído no plugin.</p>
 					</td>
 				</tr>
 				<tr>

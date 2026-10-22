@@ -13,9 +13,9 @@ function nlfp_default_settings() {
 		// {privacidade} é substituído pelo URL da página de privacidade definida em Definições > Privacidade.
 		'consent'               => 'Li e aceito a <a href="{privacidade}">política de privacidade</a>',
 		'success'               => 'Obrigado! A sua subscrição foi registada.',
-		'bg_color'              => '#e1e8ef',
-		'text_color'            => '#2b4558',
-		'watermark_color'       => '#b5bdc6',
+		'bg_color'              => '#000000',
+		'text_color'            => '#ffffff',
+		'watermark_color'       => '#1c1c1c',
 		'logo_id'               => 0,
 		'provider'              => 'none',
 		'brevo_api_key'         => '',

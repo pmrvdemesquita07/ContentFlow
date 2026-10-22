@@ -10,7 +10,7 @@ Bloco de subscrição de newsletter, a toda a largura, inserido automaticamente 
 
 ## Configurar
 
-- **Logo (marca de água):** carrega um PNG transparente ou um SVG. O logo é pintado numa única cor (a "cor da marca de água"), por isso as cores originais não importam.
+- **Logo (marca de água):** o logo Public' já vem incluído (`assets/logo.png`). Para trocar, carrega um PNG transparente ou um SVG. O logo é pintado numa única cor (a "cor da marca de água"), por isso as cores originais não importam.
 - **Onde aparece:** escolhe páginas e/ou artigos; podes excluir páginas pelo ID (ex.: Contactos, Checkout).
 - **Cores e textos:** fundo, texto/botão, marca de água, título, descrição, texto do botão, consentimento RGPD.
 - **Plataforma de email (opcional):** Brevo ou Mailchimp. Os subscritores ficam sempre também guardados em **Newsletter → Subscritores**, com exportação para CSV.

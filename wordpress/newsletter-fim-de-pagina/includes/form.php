@@ -84,6 +84,7 @@ function nlfp_render_form() {
 	$privacy = get_privacy_policy_url() ?: home_url( '/politica-de-privacidade/' );
 	$consent = str_replace( '{privacidade}', esc_url( $privacy ), $s['consent'] );
 	$logo    = $s['logo_id'] ? wp_get_attachment_image_url( $s['logo_id'], 'full' ) : '';
+	$logo    = $logo ?: NLFP_URL . 'assets/logo.png'; // Logo incluído no plugin, usado se nenhum for escolhido.
 
 	$style = sprintf(
 		'--nlfp-bg:%s;--nlfp-text:%s;--nlfp-watermark:%s;%s',
